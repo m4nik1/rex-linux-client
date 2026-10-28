@@ -1,0 +1,15 @@
+$ tsx scripts/smoke.ts
+CREATED rexgui-smoke-1793202641020 session:01a18334-d87c-7df2-9223-68547375fab1 view revision 1
+STREAM initial VT redraw bytes 7647 Ghostty binary present: false
+PASS post-snapshot REXGUI_OK; TERM=xterm-rex
+PASS data stream resumed; fresh snapshots: 0
+PASS control client resumed and session views re-bootstrapped
+PASS split event merged; blocks 2
+FORMAT idle bytes 11145 scrollback sentinel: true
+IDLE reattach bytes 11147
+PASS xterm idle redraw retains scrollback: 113 lines
+FORMAT top bytes 14086 contains top header: true alternate screen mode: false
+TOP reattach bytes 17537 contains top header: true
+PASS xterm full-screen redraw contains Tasks and process headers
+SMOKE PASS
+DESTROYED only smoke session session:01a18334-d87c-7df2-9223-68547375fab1

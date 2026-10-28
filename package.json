@@ -1,0 +1,61 @@
+{
+  "name": "rex-gui",
+  "version": "0.1.0",
+  "description": "Linux desktop client for Rex",
+  "main": "out/main/index.js",
+  "author": "rex-gui contributors",
+  "license": "MIT",
+  "scripts": {
+    "dev": "env -u ELECTRON_RUN_AS_NODE electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "env -u ELECTRON_RUN_AS_NODE electron-vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "smoke": "tsx scripts/smoke.ts",
+    "dist": "pnpm build && electron-builder",
+    "smoke:ui": "pnpm build && env -u ELECTRON_RUN_AS_NODE electron scripts/ui-smoke.cjs",
+    "setup:electron": "node scripts/setup-electron.cjs",
+    "format": "prettier --write src scripts tests electron.vite.config.ts package.json tsconfig.json",
+    "screenshots": "pnpm build && env -u ELECTRON_RUN_AS_NODE electron scripts/ui-screenshot.cjs"
+  },
+  "dependencies": {
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/addon-unicode11": "^0.8.0",
+    "@xterm/addon-web-links": "^0.11.0",
+    "@xterm/addon-webgl": "^0.18.0",
+    "@xterm/xterm": "^5.5.0",
+    "solid-js": "^1.9.9",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/ws": "^8.18.1",
+    "@xterm/headless": "^5.5.0",
+    "electron": "^39.0.0",
+    "electron-builder": "^26.0.12",
+    "electron-vite": "^4.0.1",
+    "prettier": "^3.9.10",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.12",
+    "vite-plugin-solid": "^2.11.9",
+    "vitest": "^3.2.4"
+  },
+  "build": {
+    "appId": "com.rexgui.desktop",
+    "productName": "Rex GUI",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*"
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "pacman"
+      ],
+      "category": "System"
+    }
+  }
+}

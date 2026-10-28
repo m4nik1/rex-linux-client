@@ -1,0 +1,34 @@
+$ env -u ELECTRON_RUN_AS_NODE electron-vite dev
+vite v7.3.7 building ssr environment for development...
+transforming...
+✓ 10 modules transformed.
+rendering chunks...
+out/main/index.js  37.00 kB
+✓ built in 104ms
+
+build the electron main process successfully
+
+-----
+
+vite v7.3.7 building ssr environment for development...
+transforming...
+✓ 2 modules transformed.
+rendering chunks...
+out/preload/index.js  1.41 kB
+✓ built in 8ms
+
+build the electron preload files successfully
+
+-----
+
+11:50:08 AM [vite] (client) Re-optimizing dependencies because lockfile has changed
+dev server running for the electron renderer process at:
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+
+start electron app...
+
+[renderer] [vite] connecting...
+[renderer] [vite] connected.
+[rex-gui] main ready

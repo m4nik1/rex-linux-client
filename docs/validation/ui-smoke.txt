@@ -1,0 +1,46 @@
+$ pnpm build && env -u ELECTRON_RUN_AS_NODE electron scripts/ui-smoke.cjs
+$ electron-vite build
+vite v7.3.7 building ssr environment for production...
+transforming...
+✓ 10 modules transformed.
+rendering chunks...
+out/main/index.js  37.00 kB
+✓ built in 106ms
+vite v7.3.7 building ssr environment for production...
+transforming...
+✓ 2 modules transformed.
+rendering chunks...
+out/preload/index.js  1.41 kB
+✓ built in 7ms
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 22 modules transformed.
+rendering chunks...
+../../out/renderer/index.html                   0.56 kB
+../../out/renderer/assets/index-Cf0Q07ad.css    6.62 kB
+../../out/renderer/assets/index-BpNN-WiY.js   615.24 kB
+✓ built in 823ms
+[rex-gui] main ready
+UI bridge servers [
+  {
+    id: 'personal',
+    label: 'Personal',
+    address: 'unix:///run/user/1000/rex/server.sock',
+    kind: 'personal',
+    state: 'connected',
+    error: undefined
+  },
+  {
+    id: 'shared',
+    label: 'Shared',
+    address: 'unix:///run/rex/server.sock',
+    kind: 'shared',
+    state: 'disconnected',
+    error: 'Error: connect ENOENT /run/rex/server.sock'
+  }
+]
+UI idle screenshot saved
+UI top reattach screenshot saved
+UI PASS close pane + close window
+UI PASS: real preload IPC, terminal input, new/focus window, full-screen reattach, split layout; screenshots in docs/validation
+UI DESTROYED session:01a18335-2c59-7e00-8c8b-ed693a6b1507
