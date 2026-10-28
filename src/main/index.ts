@@ -9,7 +9,8 @@ import { IPC_METHODS, type IPCMethod, type RexAPI } from '../shared/ipc'
 let win: BrowserWindow | undefined
 let registry: ServerRegistry
 const hyprBlur = new HyprBlur()
-let quitting = false
+let blurRestored = false
+let blurRestoring: Promise<void> | undefined
 interface Handle {
   serverId: string
   sessionId: string
@@ -368,11 +369,14 @@ app.on('window-all-closed', () => app.quit())
 // Ctrl-C in `pnpm dev` or a plain kill should still restore the compositor blur.
 for (const signal of ['SIGINT', 'SIGTERM'] as const) process.on(signal, () => app.quit())
 app.on('before-quit', (event) => {
-  if (!quitting && hyprBlur.supported) {
-    // Give Hyprland its own blur values back before we exit.
+  if (!blurRestored && hyprBlur.supported) {
+    // Give Hyprland its own blur values back before we exit. Every quit attempt
+    // (repeated signals included) waits on the same restore.
     event.preventDefault()
-    quitting = true
-    void hyprBlur.restore().finally(() => app.quit())
+    blurRestoring ??= hyprBlur.restore().finally(() => {
+      blurRestored = true
+      app.quit()
+    })
     return
   }
   for (const h of handles.values()) {

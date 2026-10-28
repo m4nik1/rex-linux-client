@@ -55,7 +55,12 @@ async function finish(code) {
       code = 1
     }
   }
-  app.exit(code)
+  // Quit normally so the app's before-quit cleanup (Hyprland blur restore) runs first.
+  app.once('will-quit', (event) => {
+    event.preventDefault()
+    app.exit(code)
+  })
+  app.quit()
 }
 
 app.on('browser-window-created', (_e, w) => {
