@@ -74,6 +74,7 @@ Note that Alt+arrows and Alt+digits are claimed. fish and some editors bind Alt+
 | Window opacity | 35–100% | 88% | Opacity of the base layer behind everything |
 | Terminal tint | 0–100% | 55% | Pane fill in the theme background colour; xterm itself renders transparent |
 | Glass blur | 0–48 px | 22 px | Chrome backdrop blur |
+| Desktop blur | 0–64 px | 32 px | Hyprland only, hidden elsewhere. Compositor blur behind the window while it is focused; 0 = your own Hyprland setting |
 | Font size | 9–24 | 13.5 | Live refit |
 | Accent | 5 swatches | Glacier | Focus glow, dividers, buttons, selection marks |
 
@@ -111,7 +112,7 @@ The add-host dialog validates input with `parseHostInput` (unit-tested) and expl
 
 ## Known gaps
 
-- Compositor blur behind the window is not requested. On Hyprland, add a `windowrule` or layerrule for blur; on KDE, the KWin blur effect with "blur behind" rules. The base layer keeps the app legible either way.
+- Desktop blur is Hyprland-only. Hyprland has no per-window blur size, so while Rex GUI is focused `src/main/hypr-blur.ts` raises the global `decoration:blur:size` (and `passes` to at least 4) over the IPC socket. It restores your values on unfocus, quit, SIGINT and SIGTERM. Other transparent windows and layers get the heavier blur while Rex GUI is focused. After a crash or SIGKILL, run `hyprctl reload`. On KDE, use the KWin blur effect with "blur behind" rules. The base layer keeps the app legible either way.
 - The `#lens` displacement depends on Chromium's support for `backdrop-filter: url()`. It is subtle on purpose. Where it is unsupported, the plain blur still applies.
 - Hidden tabs detach their terminals (backend design), so switching tabs re-attaches and redraws from `format`. xterm instances survive layout and focus changes within a tab, but not tab switches.
 - Split-pane drag is pointer-based. Pane swap and tab reorder use HTML5 drag and drop, which has no keyboard equivalent yet; the palette covers the other actions.

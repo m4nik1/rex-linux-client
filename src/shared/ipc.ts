@@ -204,6 +204,11 @@ export interface RexAPI {
   readClipboard(): Promise<string>
   writeClipboard(text: string): Promise<void>
   onMaximizeChange(cb: (maximized: boolean) => void): Unsubscribe
+  /**
+   * Compositor blur size behind the window while it is focused (0 = leave the
+   * compositor's own setting). Resolves false when unsupported (Hyprland only).
+   */
+  setDesktopBlur(size: number): Promise<boolean>
 }
 export const IPC_METHODS = [
   'listServers',
@@ -239,6 +244,7 @@ export const IPC_METHODS = [
   'blockInfo',
   'readClipboard',
   'writeClipboard',
+  'setDesktopBlur',
 ] as const
 export type IPCMethod = (typeof IPC_METHODS)[number]
 declare global {

@@ -242,7 +242,7 @@ export interface RexAPI {
 
 BrowserWindow uses frame:false, transparent:true, backgroundColor:'#00000000', contextIsolation:true, nodeIntegration:false, sandbox:true. `backgroundMaterial: auto` is set as a best-effort Electron hint. The current proof renderer paints a mostly opaque dark background for legibility; replace that CSS for glass visuals.
 
-Actual Linux backdrop blur is compositor-owned. This configuration does not install KWin blur hints or Hyprland rules, and Electron's backgroundMaterial does not guarantee Wayland blur. The session here is Hyprland; the app launches and the native surface permits transparency. KDE Plasma blur was not tested. A frontend may document a user compositor rule or add a carefully scoped native integration later. Do not promise cross-compositor blur based on this scaffold.
+Actual Linux backdrop blur is compositor-owned. On Hyprland, `setDesktopBlur(size)` raises the global blur size while the window is focused and restores it afterwards (see docs/FRONTEND.md). It resolves false elsewhere. No KWin blur hints are installed, and Electron's backgroundMaterial does not guarantee Wayland blur. The session here is Hyprland; the app launches and the native surface permits transparency. KDE Plasma blur was not tested. A frontend may document a user compositor rule or add a carefully scoped native integration later. Do not promise cross-compositor blur based on this scaffold.
 
 ## Known gaps / next work
 

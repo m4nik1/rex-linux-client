@@ -140,6 +140,7 @@ describe('theme & settings', () => {
   it('loads and clamps persisted settings', () => {
     expect(loadSettings(null)).toEqual(DEFAULT_SETTINGS)
     expect(loadSettings('{"fontSize":99,"accent":"nope","blur":4}')).toMatchObject({ fontSize: 24, accent: 'glacier', blur: 4 })
+    expect(loadSettings('{"desktopBlur":200}').desktopBlur).toBe(64)
     expect(loadSettings('garbage')).toEqual(DEFAULT_SETTINGS)
   })
 })

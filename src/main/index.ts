@@ -4,9 +4,12 @@ import { randomUUID } from 'node:crypto'
 import { ServerRegistry } from './rex/server-registry'
 import { TerminalStream } from './rex/data'
 import { InputQueue } from './rex/input-queue'
+import { HyprBlur } from './hypr-blur'
 import { IPC_METHODS, type IPCMethod, type RexAPI } from '../shared/ipc'
 let win: BrowserWindow | undefined
 let registry: ServerRegistry
+const hyprBlur = new HyprBlur()
+let quitting = false
 interface Handle {
   serverId: string
   sessionId: string
@@ -285,6 +288,13 @@ const api: Omit<
   async isMaximized() {
     return win?.isMaximized() ?? false
   },
+  async setDesktopBlur(size) {
+    if (typeof size !== 'number' || !Number.isFinite(size)) throw new Error('Expected size')
+    if (!hyprBlur.supported) return false
+    void hyprBlur.setFocused(win?.isFocused() ?? false)
+    await hyprBlur.setSize(Math.round(Math.min(64, Math.max(0, size))))
+    return true
+  },
 }
 app
   .whenReady()
@@ -313,6 +323,8 @@ app
     })
     win.on('maximize', () => send('rex:maximized', true))
     win.on('unmaximize', () => send('rex:maximized', false))
+    win.on('focus', () => void hyprBlur.setFocused(true))
+    win.on('blur', () => void hyprBlur.setFocused(false))
     win.webContents.setWindowOpenHandler(({ url }) => {
       if (/^https?:/.test(url)) void shell.openExternal(url)
       return { action: 'deny' }
@@ -353,7 +365,16 @@ app
     app.quit()
   })
 app.on('window-all-closed', () => app.quit())
-app.on('before-quit', () => {
+// Ctrl-C in `pnpm dev` or a plain kill should still restore the compositor blur.
+for (const signal of ['SIGINT', 'SIGTERM'] as const) process.on(signal, () => app.quit())
+app.on('before-quit', (event) => {
+  if (!quitting && hyprBlur.supported) {
+    // Give Hyprland its own blur values back before we exit.
+    event.preventDefault()
+    quitting = true
+    void hyprBlur.restore().finally(() => app.quit())
+    return
+  }
   for (const h of handles.values()) {
     clearTimeout(h.timer)
     h.stream.close()

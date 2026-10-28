@@ -1,10 +1,18 @@
-import { For, onCleanup, onMount } from 'solid-js'
-import { ACCENTS, DEFAULT_SETTINGS, setSettings, settings, type AccentId, type Settings } from '../state/settings'
+import { For, onCleanup, onMount, Show } from 'solid-js'
+import {
+  ACCENTS,
+  DEFAULT_SETTINGS,
+  desktopBlurSupported,
+  setSettings,
+  settings,
+  type AccentId,
+  type Settings,
+} from '../state/settings'
 import { setSettingsOpen } from '../state/ui'
 
 function Slider(props: {
   label: string
-  k: keyof Pick<Settings, 'backgroundOpacity' | 'terminalOpacity' | 'blur' | 'fontSize'>
+  k: keyof Pick<Settings, 'backgroundOpacity' | 'terminalOpacity' | 'blur' | 'desktopBlur' | 'fontSize'>
   min: number
   max: number
   step: number
@@ -48,6 +56,16 @@ export function SettingsPopover() {
       <Slider label="Window opacity" k="backgroundOpacity" min={0} max={1} step={0.01} format={pct} />
       <Slider label="Terminal tint" k="terminalOpacity" min={0} max={1} step={0.01} format={pct} />
       <Slider label="Glass blur" k="blur" min={0} max={48} step={1} format={(v) => `${v}px`} />
+      <Show when={desktopBlurSupported()}>
+        <Slider
+          label="Desktop blur"
+          k="desktopBlur"
+          min={0}
+          max={64}
+          step={1}
+          format={(v) => (v ? `${v}px` : 'System')}
+        />
+      </Show>
       <Slider label="Font size" k="fontSize" min={9} max={24} step={0.5} format={(v) => `${v}pt`} />
       <div class="accent-row">
         <span class="slider-label">Accent</span>

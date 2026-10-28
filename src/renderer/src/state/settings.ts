@@ -1,5 +1,5 @@
 import { createStore } from 'solid-js/store'
-import { createEffect } from 'solid-js'
+import { createEffect, createSignal } from 'solid-js'
 
 export const ACCENTS = {
   glacier: { label: 'Glacier', color: '#8fd3ff' },
@@ -17,6 +17,8 @@ export interface Settings {
   terminalOpacity: number
   /** Chrome backdrop blur in px. */
   blur: number
+  /** Compositor blur size behind the window while focused (Hyprland); 0 = compositor default. */
+  desktopBlur: number
   fontSize: number
   accent: AccentId
   sidebarOpen: boolean
@@ -26,6 +28,7 @@ export const DEFAULT_SETTINGS: Settings = {
   backgroundOpacity: 0.25,
   terminalOpacity: 0.3,
   blur: 22,
+  desktopBlur: 32,
   fontSize: 13.5,
   accent: 'glacier',
   sidebarOpen: false,
@@ -45,6 +48,7 @@ export function loadSettings(raw: string | null): Settings {
       backgroundOpacity: clamp(s.backgroundOpacity, 0, 1, DEFAULT_SETTINGS.backgroundOpacity),
       terminalOpacity: clamp(s.terminalOpacity, 0, 1, DEFAULT_SETTINGS.terminalOpacity),
       blur: clamp(s.blur, 0, 48, DEFAULT_SETTINGS.blur),
+      desktopBlur: clamp(s.desktopBlur, 0, 64, DEFAULT_SETTINGS.desktopBlur),
       fontSize: clamp(s.fontSize, 9, 24, DEFAULT_SETTINGS.fontSize),
       accent: s.accent in ACCENTS ? s.accent : DEFAULT_SETTINGS.accent,
       sidebarOpen: !!s.sidebarOpen,
@@ -58,7 +62,10 @@ export const [settings, setSettings] = createStore<Settings>(
   loadSettings(typeof localStorage === 'undefined' ? null : localStorage.getItem(KEY)),
 )
 
-/** Mirror settings to CSS custom properties and localStorage. */
+/** Whether the compositor accepted desktop blur control (Hyprland only). */
+export const [desktopBlurSupported, setDesktopBlurSupported] = createSignal(false)
+
+/** Mirror settings to CSS custom properties, the compositor and localStorage. */
 export function bindSettings() {
   createEffect(() => {
     const root = document.documentElement.style
@@ -67,5 +74,10 @@ export function bindSettings() {
     root.setProperty('--blur', `${settings.blur}px`)
     root.setProperty('--accent', ACCENTS[settings.accent].color)
     localStorage.setItem(KEY, JSON.stringify({ ...settings }))
+  })
+  createEffect(() => {
+    void window.rex
+      .setDesktopBlur(settings.desktopBlur)
+      .then(setDesktopBlurSupported, (e) => console.warn('[desktop blur]', e))
   })
 }
