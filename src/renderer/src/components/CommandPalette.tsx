@@ -37,7 +37,7 @@ function commands(): Command[] {
     )
   }
   add('toggle-sidebar', 'Toggle sessions sidebar', actions.toggleSidebar, 'toggleSidebar')
-  add('settings', 'Appearance settings', () => setSettingsOpen(true), 'settings')
+  add('settings', 'Settings', () => setSettingsOpen(true), 'settings')
   add('add-host', 'Add remote host', () => setDialog({ kind: 'addHost' }))
   for (const s of sortedServers())
     if (s.state === 'connected')

@@ -20,7 +20,7 @@ import { Sidebar } from './components/Sidebar'
 import { Workspace } from './components/Workspace'
 import { EmptyState } from './components/EmptyState'
 import { CommandPalette } from './components/CommandPalette'
-import { SettingsPopover } from './components/SettingsPopover'
+import { SettingsDialog } from './components/SettingsDialog'
 import { Dialogs } from './components/Dialogs'
 import { Toasts } from './components/Toasts'
 import { GlassDefs } from './components/GlassDefs'
@@ -120,7 +120,7 @@ export function App() {
         </main>
       </div>
       <Show when={settingsOpen()}>
-        <SettingsPopover />
+        <SettingsDialog />
       </Show>
       <Show when={paletteOpen()}>
         <CommandPalette />

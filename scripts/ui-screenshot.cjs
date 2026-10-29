@@ -141,7 +141,7 @@ app.on('browser-window-created', (_e, w) => {
       await delay(300)
 
       // Settings popover.
-      await evaluate(`document.querySelector('[aria-label="Appearance settings"]').click()`)
+      await evaluate(`document.querySelector('[aria-label="Settings"]').click()`)
       await delay(700)
       await shot('06-settings.png')
       await key('Escape')

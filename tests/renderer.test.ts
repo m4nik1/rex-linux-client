@@ -11,7 +11,7 @@ import {
   parseHostInput,
 } from '../src/renderer/src/lib/format'
 import { matchShortcut } from '../src/renderer/src/lib/keys'
-import { rexTheme, withAlpha } from '../src/renderer/src/lib/theme'
+import { rexTheme, withAlpha, composeTheme } from '../src/renderer/src/lib/theme'
 import { loadSettings, DEFAULT_SETTINGS } from '../src/renderer/src/state/settings'
 
 const win = (zoom?: string): RexWindow => ({
@@ -142,5 +142,41 @@ describe('theme & settings', () => {
     expect(loadSettings('{"fontSize":99,"accent":"nope","blur":4}')).toMatchObject({ fontSize: 24, accent: 'glacier', blur: 4 })
     expect(loadSettings('{"desktopBlur":200}').desktopBlur).toBe(64)
     expect(loadSettings('garbage')).toEqual(DEFAULT_SETTINGS)
+  })
+  it('validates font, line height, scheme and colour overrides', () => {
+    const s = loadSettings(
+      '{"lineHeight":9,"colorScheme":"nope","fontFamily":"Fira{;}","colorOverrides":{"red":"#f00","bogus":"#fff","cursor":"x"}}',
+    )
+    expect(s.lineHeight).toBe(2)
+    expect(s.colorScheme).toBe('rex')
+    expect(s.fontFamily).toBe('Fira')
+    expect(s.colorOverrides).toEqual({ red: '#ff0000' })
+  })
+  it('composes preset and overrides over the Rex theme', () => {
+    const base = rexTheme({ type: 'theme', background: '#101010' })
+    const t = composeTheme(base, { background: '#222222', red: '#aa0000' }, { red: '#bb0000', background: '#333333' })
+    expect(t.red).toBe('#bb0000')
+    expect(t.background).toBe('#333333')
+    expect(t.cursorAccent).toBe('#333333')
+    expect(composeTheme(base, undefined, {}).background).toBe('#101010')
+  })
+})
+
+import { parseTailscale } from '../src/main/integrations'
+describe('tailscale status', () => {
+  it('parses peers, online first', () => {
+    const s = parseTailscale(
+      JSON.stringify({
+        BackendState: 'Running',
+        Self: { HostName: 'me', DNSName: 'me.tail.ts.net.', TailscaleIPs: ['100.1.1.1'] },
+        Peer: {
+          a: { HostName: 'zed', DNSName: 'zed.tail.ts.net.', Online: false, OS: 'linux', TailscaleIPs: ['100.1.1.3'] },
+          b: { HostName: 'box', DNSName: 'box.tail.ts.net.', Online: true, OS: 'linux', TailscaleIPs: ['100.1.1.2'] },
+        },
+      }),
+    )
+    expect(s.state).toBe('Running')
+    expect(s.self?.dns).toBe('me.tail.ts.net')
+    expect(s.peers.map((p) => p.name)).toEqual(['box', 'zed'])
   })
 })

@@ -16,7 +16,8 @@ import { settings } from '../state/settings'
 import { report, toast } from '../state/toasts'
 import { terminals } from '../state/terminals'
 import { matchShortcut } from '../lib/keys'
-import { DEFAULT_THEME, rexTheme, withAlpha } from '../lib/theme'
+import { composeTheme, DEFAULT_THEME, rexTheme, withAlpha } from '../lib/theme'
+import { THEMES } from '../lib/themes'
 import { actions, blockMeta, blockTitle } from '../state/store'
 import { paletteOpen, settingsOpen, dialog } from '../state/ui'
 import { processGlyph } from '../lib/format'
@@ -31,6 +32,15 @@ import {
 
 export const TERMINAL_FONT =
   '"JetBrainsMono Nerd Font Mono", "JetBrainsMono NFM", "JetBrains Mono", "DejaVu Sans Mono", ui-monospace, monospace'
+
+export const terminalFont = () => {
+  const own = settings.fontFamily
+    .split(',')
+    .map((f) => f.trim().replace(/^["']|["']$/g, ''))
+    .filter(Boolean)
+    .map((f) => `"${f}"`)
+  return [...own, TERMINAL_FONT].join(', ')
+}
 
 const DRAG_TYPE = 'application/x-rex-block'
 
@@ -56,7 +66,9 @@ export function TerminalPane(props: {
   let handle: string | undefined
   let disposed = false
   const cleanups: Unsubscribe[] = []
-  const [theme, setTheme] = createSignal<ITheme>(DEFAULT_THEME)
+  const [rexColors, setTheme] = createSignal<ITheme>(DEFAULT_THEME)
+  const theme = () =>
+    composeTheme(rexColors(), THEMES[settings.colorScheme]?.theme, settings.colorOverrides)
   const [state, setState] = createSignal<'connecting' | 'live' | 'reconnecting' | 'closed'>(
     'connecting',
   )
@@ -65,9 +77,9 @@ export function TerminalPane(props: {
   const term = new Terminal({
     allowProposedApi: true,
     allowTransparency: true,
-    fontFamily: TERMINAL_FONT,
+    fontFamily: terminalFont(),
     fontSize: settings.fontSize,
-    lineHeight: 1.12,
+    lineHeight: settings.lineHeight,
     letterSpacing: 0,
     scrollback: 10000,
     cursorBlink: true,
@@ -110,6 +122,7 @@ export function TerminalPane(props: {
     focus: () => term.focus(),
     selection: () => term.getSelection(),
     paste: (text) => term.paste(text),
+    input: (text) => term.input(text, true),
   })
 
   onMount(() => {
@@ -180,6 +193,17 @@ export function TerminalPane(props: {
       () => settings.fontSize,
       (size) => {
         term.options.fontSize = size
+        scheduleFit()
+      },
+      { defer: true },
+    ),
+  )
+  createEffect(
+    on(
+      () => [terminalFont(), settings.lineHeight] as const,
+      ([family, lineHeight]) => {
+        term.options.fontFamily = family
+        term.options.lineHeight = lineHeight
         scheduleFit()
       },
       { defer: true },

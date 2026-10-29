@@ -88,3 +88,26 @@ export function withAlpha(color: string | undefined, alpha: number) {
   const n = parseInt(c.slice(1, 7), 16)
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`
 }
+
+/** Override keys the user may set individually in Settings. */
+export const COLOR_KEYS = ['foreground', 'background', 'cursor', 'selectionBackground', ...NAMES] as const
+export type ColorKey = (typeof COLOR_KEYS)[number]
+
+/**
+ * Final terminal theme: the base (a preset, or the Rex-provided theme when
+ * `preset` is undefined) with the user's individual colour overrides on top.
+ */
+export function composeTheme(
+  base: ITheme,
+  preset: ITheme | undefined,
+  overrides: Partial<Record<ColorKey, string>>,
+): ITheme {
+  const theme: ITheme = preset ? { ...base, ...preset, extendedAnsi: undefined } : { ...base }
+  for (const [key, value] of Object.entries(overrides)) {
+    const color = hex(value)
+    if (!color || !(COLOR_KEYS as readonly string[]).includes(key)) continue
+    ;(theme as Record<string, string>)[key] = color
+    if (key === 'background') theme.cursorAccent = color
+  }
+  return theme
+}

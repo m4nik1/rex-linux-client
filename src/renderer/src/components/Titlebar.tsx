@@ -165,8 +165,8 @@ export function Titlebar() {
         <button
           class="ibtn tb"
           classList={{ on: settingsOpen() }}
-          title="Appearance (Ctrl+Shift+,)"
-          aria-label="Appearance settings"
+          title="Settings (Ctrl+Shift+,)"
+          aria-label="Settings"
           onClick={(e) => {
             e.stopPropagation()
             setSettingsOpen(!settingsOpen())

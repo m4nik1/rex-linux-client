@@ -95,6 +95,31 @@ export interface BlockInfo {
   pwd?: string
   title?: string
 }
+export interface TailscalePeer {
+  name: string
+  dns: string
+  ip: string
+  online: boolean
+  os: string
+}
+export interface TailscaleStatus {
+  installed: boolean
+  /** BackendState: Running, Stopped, NeedsLogin, NotInstalled, ... */
+  state: string
+  authUrl?: string
+  tailnet?: string
+  self?: { name: string; dns: string; ip: string }
+  peers: TailscalePeer[]
+  error?: string
+}
+export interface AgentInfo {
+  id: string
+  name: string
+  command: string
+  installed: boolean
+  path?: string
+  version?: string
+}
 export interface RexAPI {
   listServers(): Promise<ServerInfo[]>
   connect(serverId: string): Promise<void>
@@ -209,6 +234,12 @@ export interface RexAPI {
    * compositor's own setting). Resolves false when unsupported (Hyprland only).
    */
   setDesktopBlur(size: number): Promise<boolean>
+  tailscaleStatus(): Promise<TailscaleStatus>
+  /** Run `tailscale up`/`down`; the result may carry a login URL. */
+  tailscaleSet(on: boolean): Promise<TailscaleStatus>
+  /** Open a Tailscale login URL in the default browser. */
+  openLoginUrl(url: string): Promise<void>
+  detectAgents(): Promise<AgentInfo[]>
 }
 export const IPC_METHODS = [
   'listServers',
@@ -245,6 +276,10 @@ export const IPC_METHODS = [
   'readClipboard',
   'writeClipboard',
   'setDesktopBlur',
+  'tailscaleStatus',
+  'tailscaleSet',
+  'openLoginUrl',
+  'detectAgents',
 ] as const
 export type IPCMethod = (typeof IPC_METHODS)[number]
 declare global {

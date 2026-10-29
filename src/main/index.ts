@@ -5,6 +5,7 @@ import { ServerRegistry } from './rex/server-registry'
 import { TerminalStream } from './rex/data'
 import { InputQueue } from './rex/input-queue'
 import { HyprBlur } from './hypr-blur'
+import { detectAgents, tailscaleSet, tailscaleStatus } from './integrations'
 import { IPC_METHODS, type IPCMethod, type RexAPI } from '../shared/ipc'
 let win: BrowserWindow | undefined
 let registry: ServerRegistry
@@ -296,6 +297,14 @@ const api: Omit<
     await hyprBlur.setSize(Math.round(Math.min(64, Math.max(0, size))))
     return true
   },
+  tailscaleStatus: () => tailscaleStatus(),
+  tailscaleSet: async (on) => tailscaleSet(!!on),
+  async openLoginUrl(url) {
+    if (typeof url !== 'string' || !/^https:\/\/login\.tailscale\.com\//.test(url))
+      throw new Error('Unsupported login URL')
+    await shell.openExternal(url)
+  },
+  detectAgents: () => detectAgents(),
 }
 app
   .whenReady()
