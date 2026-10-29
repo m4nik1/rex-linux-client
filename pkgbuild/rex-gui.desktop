@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Rex
+GenericName=Terminal Sessions
+Comment=Linux desktop client for Rex
+Exec=rex-gui %U
+Icon=rex-gui
+Terminal=false
+Categories=System;TerminalEmulator;
+Keywords=terminal;shell;session;remote;
+StartupWMClass=rex-gui

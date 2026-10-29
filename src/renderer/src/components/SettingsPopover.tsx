@@ -5,6 +5,7 @@ import {
   desktopBlurSupported,
   setSettings,
   settings,
+  accentColor,
   type AccentId,
   type Settings,
 } from '../state/settings'
@@ -51,7 +52,7 @@ export function SettingsPopover() {
   })
   const pct = (v: number) => `${Math.round(v * 100)}%`
   return (
-    <div class="settings glass lens" ref={el} role="dialog" aria-label="Appearance">
+    <div class="settings glass" ref={el} role="dialog" aria-label="Appearance">
       <h3>Appearance</h3>
       <Slider label="Window opacity" k="backgroundOpacity" min={0} max={1} step={0.01} format={pct} />
       <Slider label="Terminal tint" k="terminalOpacity" min={0} max={1} step={0.01} format={pct} />
@@ -75,7 +76,7 @@ export function SettingsPopover() {
               <button
                 class="swatch"
                 classList={{ on: settings.accent === id }}
-                style={{ '--c': a.color }}
+                style={{ '--c': accentColor(id) }}
                 title={a.label}
                 aria-label={`${a.label} accent`}
                 onClick={() => setSettings('accent', id)}

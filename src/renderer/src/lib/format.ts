@@ -126,3 +126,7 @@ export function parseHostInput(raw: string): HostInput {
     kind: hasScheme ? 'url' : account ? 'account' : tailscale ? 'tailscale' : 'host',
   }
 }
+
+/** Default label for a new session, e.g. "session-0824". */
+export const newSessionLabel = (now = new Date()) =>
+  `session-${now.toTimeString().slice(0, 5).replace(':', '')}`

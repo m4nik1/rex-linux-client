@@ -5,10 +5,14 @@ import { ServerRegistry } from './rex/server-registry'
 import { TerminalStream } from './rex/data'
 import { InputQueue } from './rex/input-queue'
 import { HyprBlur } from './hypr-blur'
+import { OmarchyThemeWatcher } from './omarchy-theme'
 import { IPC_METHODS, type IPCMethod, type RexAPI } from '../shared/ipc'
 let win: BrowserWindow | undefined
 let registry: ServerRegistry
 const hyprBlur = new HyprBlur()
+const omarchyTheme = new OmarchyThemeWatcher(undefined, async () =>
+  hyprBlur.supported ? hyprBlur.getInt('decoration:rounding') : undefined,
+)
 let blurRestored = false
 let blurRestoring: Promise<void> | undefined
 interface Handle {
@@ -82,6 +86,7 @@ const api: Omit<
   | 'onBlockEvent'
   | 'onServerEvent'
   | 'onMaximizeChange'
+  | 'onOmarchyTheme'
 > = {
   async listServers() {
     return registry.list()
@@ -296,11 +301,14 @@ const api: Omit<
     await hyprBlur.setSize(Math.round(Math.min(64, Math.max(0, size))))
     return true
   },
+  getOmarchyTheme: () => omarchyTheme.read(),
 }
 app
   .whenReady()
   .then(async () => {
     registry = new ServerRegistry(join(app.getPath('userData'), 'hosts.json'))
+    omarchyTheme.on('change', (theme) => send('rex:omarchyTheme', theme))
+    omarchyTheme.start()
     registry.on('fault', (e) => console.warn('[rex]', String(e)))
     registry.on('state', (info) => send('rex:serverState', info))
     registry.on('view', (event) => send('rex:sessionView', event))
@@ -356,9 +364,13 @@ app
       },
     )
     await registry.init()
-    if (process.env.ELECTRON_RENDERER_URL)
-      await win.loadURL(process.env.ELECTRON_RENDERER_URL)
-    else await win.loadFile(join(__dirname, '../renderer/index.html'))
+    // REX_GUI_AUTO_SESSION=0 keeps startup on the empty state (UI scripts).
+    const query = process.env.REX_GUI_AUTO_SESSION === '0' ? { autoSession: '0' } : undefined
+    if (process.env.ELECTRON_RENDERER_URL) {
+      const url = new URL(process.env.ELECTRON_RENDERER_URL)
+      if (query) url.search = new URLSearchParams(query).toString()
+      await win.loadURL(url.toString())
+    } else await win.loadFile(join(__dirname, '../renderer/index.html'), { query })
     console.log('[rex-gui] main ready')
   })
   .catch((e) => {
@@ -385,5 +397,6 @@ app.on('before-quit', (event) => {
     h.input.close()
   }
   handles.clear()
+  omarchyTheme.close()
   registry?.close()
 })

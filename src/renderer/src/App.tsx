@@ -23,7 +23,6 @@ import { CommandPalette } from './components/CommandPalette'
 import { SettingsPopover } from './components/SettingsPopover'
 import { Dialogs } from './components/Dialogs'
 import { Toasts } from './components/Toasts'
-import { GlassDefs } from './components/GlassDefs'
 
 async function runShortcut(a: ShortcutAction) {
   const term = () => {
@@ -108,7 +107,6 @@ export function App() {
 
   return (
     <div class="app">
-      <GlassDefs />
       <div class="base" aria-hidden="true" />
       <Titlebar />
       <div class="body">

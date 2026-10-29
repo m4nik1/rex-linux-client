@@ -9,7 +9,16 @@ import {
   setSettingsOpen,
   settingsOpen,
 } from '../state/ui'
-import { IconClose, IconCommand, IconEye, IconPlus, IconSidebar } from './Icons'
+import {
+  IconClose,
+  IconCommand,
+  IconEye,
+  IconMaximize,
+  IconMinimize,
+  IconPlus,
+  IconRestore,
+  IconSidebar,
+} from './Icons'
 import { ProcessTile } from './TerminalPane'
 
 const TAB_TYPE = 'application/x-rex-window'
@@ -25,22 +34,20 @@ function WindowControls() {
     onCleanup(window.rex.onMaximizeChange(setMax))
   })
   return (
-    <div class="lights" role="group" aria-label="Window">
-      <button class="light close" title="Close" aria-label="Close window" onClick={() => window.rex.close()}>
-        <svg viewBox="0 0 10 10"><path d="M3 3l4 4M7 3 3 7" /></svg>
-      </button>
-      <button class="light min" title="Minimize" aria-label="Minimize" onClick={() => window.rex.minimize()}>
-        <svg viewBox="0 0 10 10"><path d="M2.6 5h4.8" /></svg>
+    <div class="wctl" role="group" aria-label="Window">
+      <button class="ibtn tb" title="Minimize" aria-label="Minimize" onClick={() => window.rex.minimize()}>
+        <IconMinimize size={15} />
       </button>
       <button
-        class="light max"
+        class="ibtn tb"
         title={max() ? 'Restore' : 'Maximize'}
         aria-label={max() ? 'Restore' : 'Maximize'}
         onClick={() => window.rex.maximize()}
       >
-        <svg viewBox="0 0 10 10">
-          <path d="M3 6.6V3h3.6M7 3.4V7H3.4" />
-        </svg>
+        {max() ? <IconRestore size={15} /> : <IconMaximize size={15} />}
+      </button>
+      <button class="ibtn tb danger" title="Close" aria-label="Close window" onClick={() => window.rex.close()}>
+        <IconClose size={15} />
       </button>
     </div>
   )
@@ -141,7 +148,6 @@ function Tab(props: { w: RexWindow; index: number; active: boolean }) {
 export function Titlebar() {
   return (
     <header class="titlebar">
-      <WindowControls />
       <button
         class="ibtn tb"
         classList={{ on: settings.sidebarOpen }}
@@ -192,6 +198,7 @@ export function Titlebar() {
           <IconPlus size={17} />
         </button>
       </div>
+      <WindowControls />
     </header>
   )
 }

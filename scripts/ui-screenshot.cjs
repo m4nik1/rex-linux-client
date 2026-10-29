@@ -202,4 +202,6 @@ app.setPath(
   'userData',
   require('node:fs').mkdtempSync(join(require('node:os').tmpdir(), 'rexgui-test-')),
 )
+// Start on the empty state rather than opening (or creating) one of the user's sessions.
+process.env.REX_GUI_AUTO_SESSION = '0'
 require('../out/main/index.js')

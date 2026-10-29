@@ -11,7 +11,8 @@ import {
   parseHostInput,
 } from '../src/renderer/src/lib/format'
 import { matchShortcut } from '../src/renderer/src/lib/keys'
-import { rexTheme, withAlpha } from '../src/renderer/src/lib/theme'
+import { omarchyTheme, rexTheme, withAlpha } from '../src/renderer/src/lib/theme'
+import { parseColors } from '../src/main/omarchy-theme'
 import { loadSettings, DEFAULT_SETTINGS } from '../src/renderer/src/state/settings'
 
 const win = (zoom?: string): RexWindow => ({
@@ -139,8 +140,19 @@ describe('theme & settings', () => {
   })
   it('loads and clamps persisted settings', () => {
     expect(loadSettings(null)).toEqual(DEFAULT_SETTINGS)
-    expect(loadSettings('{"fontSize":99,"accent":"nope","blur":4}')).toMatchObject({ fontSize: 24, accent: 'glacier', blur: 4 })
+    expect(loadSettings('{"fontSize":99,"accent":"nope","blur":4}')).toMatchObject({ fontSize: 24, accent: 'omarchy', blur: 4 })
     expect(loadSettings('{"desktopBlur":200}').desktopBlur).toBe(64)
     expect(loadSettings('garbage')).toEqual(DEFAULT_SETTINGS)
+  })
+  it('maps an Omarchy colors.toml onto the terminal, under Rex', () => {
+    const c = parseColors(
+      'mode = "dark"\n\naccent = "#ff9f0a"\nbackground = "#1c1c1e"\nforeground = "#f5f5f7"\nred = "#ff5f4a"\nbright_red = "#ff8373"\nmuted = "#8e8e93"\n',
+    )
+    expect(c.accent).toBe('#ff9f0a')
+    const base = omarchyTheme(c)
+    expect(base).toMatchObject({ background: '#1c1c1e', red: '#ff5f4a', brightRed: '#ff8373', brightBlack: '#8e8e93' })
+    // Missing keys keep the built-in palette; Rex's own colors still win.
+    expect(base.blue).toBe('#6cb6ff')
+    expect(rexTheme({ type: 'theme', palette: ['1=#ff0000'] }, base)).toMatchObject({ red: '#ff0000', background: '#1c1c1e' })
   })
 })

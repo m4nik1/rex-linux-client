@@ -11,12 +11,12 @@ import { FitAddon } from '@xterm/addon-fit'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { WebglAddon } from '@xterm/addon-webgl'
-import type { Unsubscribe } from '../../../shared/ipc'
-import { settings } from '../state/settings'
+import type { TerminalMeta, Unsubscribe } from '../../../shared/ipc'
+import { omarchy, settings } from '../state/settings'
 import { report, toast } from '../state/toasts'
 import { terminals } from '../state/terminals'
 import { matchShortcut } from '../lib/keys'
-import { DEFAULT_THEME, rexTheme, withAlpha } from '../lib/theme'
+import { DEFAULT_THEME, omarchyTheme, rexTheme, withAlpha } from '../lib/theme'
 import { actions, blockMeta, blockTitle } from '../state/store'
 import { paletteOpen, settingsOpen, dialog } from '../state/ui'
 import { processGlyph } from '../lib/format'
@@ -56,7 +56,14 @@ export function TerminalPane(props: {
   let handle: string | undefined
   let disposed = false
   const cleanups: Unsubscribe[] = []
-  const [theme, setTheme] = createSignal<ITheme>(DEFAULT_THEME)
+  // Rex's own theme for this block, layered over the Omarchy theme when there is one.
+  const [rexMeta, setRexMeta] = createSignal<Extract<TerminalMeta, { type: 'theme' }>>()
+  const theme = (): ITheme => {
+    const c = omarchy()?.colors
+    const base = c ? omarchyTheme(c) : DEFAULT_THEME
+    const meta = rexMeta()
+    return meta ? rexTheme(meta, base) : base
+  }
   const [state, setState] = createSignal<'connecting' | 'live' | 'reconnecting' | 'closed'>(
     'connecting',
   )
@@ -145,7 +152,7 @@ export function TerminalPane(props: {
       cleanups.push(window.rex.onTerminalData(id, (data) => term.write(data)))
       cleanups.push(
         window.rex.onTerminalMeta(id, (meta) => {
-          if (meta.type === 'theme') setTheme(rexTheme(meta))
+          if (meta.type === 'theme') setRexMeta(meta)
           else if (meta.type === 'child_exited') {
             term.write(`\r\n\x1b[2m[process exited with code ${meta.exit_code}]\x1b[0m\r\n`)
           } else if (meta.type === 'connection') {

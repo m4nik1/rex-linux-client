@@ -29,6 +29,16 @@ export const IconSidebar = (p: P) =>
   )
 export const IconPlus = (p: P) => svg(<path d="M8 3.2v9.6M3.2 8h9.6" />, p)
 export const IconClose = (p: P) => svg(<path d="M4.5 4.5l7 7M11.5 4.5l-7 7" />, p)
+export const IconMinimize = (p: P) => svg(<path d="M4 8h8" />, p)
+export const IconMaximize = (p: P) => svg(<rect x="4" y="4" width="8" height="8" rx="1" />, p)
+export const IconRestore = (p: P) =>
+  svg(
+    <>
+      <rect x="3.5" y="5.5" width="7" height="7" rx="1" />
+      <path d="M5.5 3.5h6a1 1 0 0 1 1 1v6" />
+    </>,
+    p,
+  )
 export const IconCommand = (p: P) =>
   svg(
     <path d="M6 6V4.5A1.5 1.5 0 1 0 4.5 6H6Zm0 0h4m-4 0v4m4-4V4.5A1.5 1.5 0 1 1 11.5 6H10Zm0 0v4m0 0h1.5A1.5 1.5 0 1 1 10 11.5V10Zm0 0H6m0 0v1.5A1.5 1.5 0 1 1 4.5 10H6Z" />,

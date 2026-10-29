@@ -11,6 +11,7 @@ import type {
 import { windowDividers, windowPanes, type PaneRect } from '../lib/layout'
 import {
   isDefaultWindowLabel,
+  newSessionLabel,
   processName,
   pwdToPath,
   shortenHome,
@@ -237,6 +238,22 @@ export async function boot() {
   } catch {
     /* nothing to restore */
   }
+  // Otherwise land in a session straight away. A local server that can't start
+  // is explained by the empty state, so the error isn't repeated as a toast.
+  const auto = new URLSearchParams(location.search).get('autoSession') !== '0'
+  if (auto && !active()) await openDefaultSession().catch(() => {})
+}
+
+/** The first session on the local server, or a new one when it has none. */
+async function openDefaultSession() {
+  const id = 'personal'
+  if (servers().find((s) => s.id === id)?.state !== 'connected') await rex().connect(id)
+  const list = await rex().listSessions(id)
+  setSessions(id, reconcile(list, { key: 'session_id' }))
+  // The user may have picked a session while the server was starting.
+  if (active()) return
+  if (list.length) await selectSession(id, list[0].session_id)
+  else await actions.createSession(id, newSessionLabel())
 }
 
 // ---------- actions ----------

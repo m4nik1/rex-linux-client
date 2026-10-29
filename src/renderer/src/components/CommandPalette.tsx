@@ -98,7 +98,7 @@ export function CommandPalette() {
   }
   return (
     <div class="scrim top" onMouseDown={(e) => e.target === e.currentTarget && close()}>
-      <div class="palette glass lens" role="dialog" aria-label="Command palette">
+      <div class="palette glass" role="dialog" aria-label="Command palette">
         <div class="palette-input">
           <IconSearch size={15} />
           <input

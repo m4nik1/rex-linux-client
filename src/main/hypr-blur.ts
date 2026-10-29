@@ -33,6 +33,7 @@ export class HyprBlur {
   private size = 0
   private focused = false
   private applied = false
+  private lua?: boolean
   private queue: Promise<void> = Promise.resolve()
 
   constructor(env = process.env) {
@@ -106,8 +107,26 @@ export class HyprBlur {
     return current
   }
 
-  private set({ size, passes }: Blur) {
-    return this.batch([
+  /**
+   * Hyprland configured in Lua (Omarchy's default) rejects `keyword` and takes
+   * `eval` instead; hyprlang configs only know `keyword`. Try Lua first and
+   * remember which one the compositor speaks.
+   */
+  private async set({ size, passes }: Blur) {
+    if (this.lua !== false) {
+      const reply = (
+        await this.request(
+          `eval hl.config({ decoration = { blur = { size = ${size}, passes = ${passes} } } })`,
+        )
+      ).trim()
+      if (reply === 'ok') {
+        this.lua = true
+        return
+      }
+      if (this.lua) throw new Error(`hyprctl: ${reply}`)
+      this.lua = false
+    }
+    await this.batch([
       `keyword decoration:blur:size ${size}`,
       `keyword decoration:blur:passes ${passes}`,
     ])
@@ -134,7 +153,7 @@ export class HyprBlur {
     } catch {}
   }
 
-  private async getInt(option: string) {
+  async getInt(option: string) {
     const reply = JSON.parse(await this.request(`j/getoption ${option}`)) as {
       int?: number
     }

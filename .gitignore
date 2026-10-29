@@ -2,3 +2,6 @@ node_modules/
 out/
 dist/
 *.log
+pkgbuild/pkg/
+pkgbuild/src/
+pkgbuild/*.pkg.tar.*
