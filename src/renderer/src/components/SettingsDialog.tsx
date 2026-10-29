@@ -1,4 +1,5 @@
 import {
+  createEffect,
   createResource,
   createSignal,
   For,
@@ -10,8 +11,12 @@ import {
 import type { TailscaleStatus } from '../../../shared/ipc'
 import {
   ACCENTS,
-  DEFAULT_SETTINGS,
+  cleanFontFamily,
+  clearColorOverrides,
   desktopBlurSupported,
+  resetColorOverride,
+  resetSettings,
+  setColorOverride,
   setSettings,
   settings,
   type AccentId,
@@ -25,8 +30,14 @@ import {
   type ColorKey,
 } from '../lib/theme'
 import { REX_THEME_ID, THEMES } from '../lib/themes'
-import { actions, focusedBlockId } from '../state/store'
-import { terminals } from '../state/terminals'
+import { isLocalServer, isShellProcess } from '../lib/format'
+import {
+  actions,
+  activeServer,
+  blockMeta,
+  focusedBlockId,
+} from '../state/store'
+import { focusedRexColors, terminals } from '../state/terminals'
 import { report, toast } from '../state/toasts'
 import { setSettingsOpen } from '../state/ui'
 
@@ -141,6 +152,7 @@ function Appearance() {
               <button
                 class="swatch"
                 classList={{ on: settings.accent === id }}
+                aria-pressed={settings.accent === id}
                 style={{ '--c': a.color }}
                 title={a.label}
                 aria-label={`${a.label} accent`}
@@ -154,11 +166,12 @@ function Appearance() {
   )
 }
 
+/** The focused pane's Rex colours, or the built-in default before any arrive. */
+const rexBase = () => focusedRexColors() ?? DEFAULT_THEME
+
 function Preview(props: { id: string }) {
   const theme = () =>
-    props.id === REX_THEME_ID
-      ? DEFAULT_THEME
-      : composeTheme(DEFAULT_THEME, THEMES[props.id].theme, {})
+    composeTheme(rexBase(), THEMES[props.id]?.theme, {})
   const dots = () => [
     theme().red,
     theme().green,
@@ -193,6 +206,7 @@ function Themes() {
             <button
               class="theme-card"
               classList={{ on: settings.colorScheme === id }}
+              aria-pressed={settings.colorScheme === id}
               onClick={() => setSettings('colorScheme', id)}
             >
               <Preview id={id} />
@@ -214,47 +228,85 @@ const COLOR_LABELS: Record<string, string> = {
   selectionBackground: 'Selection',
 }
 
+const errText = (e: unknown) =>
+  e instanceof Error ? e.message : String(e ?? 'Unknown error')
+
+function FontFamily() {
+  let input!: HTMLInputElement
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const commit = () => {
+    clearTimeout(timer)
+    const next = cleanFontFamily(input.value)
+    if (next !== settings.fontFamily) setSettings('fontFamily', next)
+  }
+  // Mirror outside changes (e.g. reset) without fighting the person typing.
+  createEffect(() => {
+    const v = settings.fontFamily
+    if (document.activeElement !== input) input.value = v
+  })
+  onCleanup(commit)
+  return (
+    <label class="field">
+      <span>Font family</span>
+      <input
+        ref={input}
+        placeholder="JetBrainsMono Nerd Font Mono"
+        spellcheck={false}
+        onInput={() => {
+          clearTimeout(timer)
+          timer = setTimeout(commit, 300)
+        }}
+        onBlur={() => {
+          commit()
+          input.value = settings.fontFamily
+        }}
+        onKeyDown={(e) => e.key === 'Enter' && commit()}
+      />
+    </label>
+  )
+}
+
 function Terminal() {
   const base = () =>
-    composeTheme(DEFAULT_THEME, THEMES[settings.colorScheme]?.theme, {})
+    composeTheme(rexBase(), THEMES[settings.colorScheme]?.theme, {})
+  const changed = (k: ColorKey) => settings.colorOverrides[k] !== undefined
   const current = (k: ColorKey) =>
     hex(settings.colorOverrides[k]) ?? hex(base()[k]) ?? '#000000'
-  const setColor = (k: ColorKey, value: string) =>
-    setSettings('colorOverrides', { ...settings.colorOverrides, [k]: value })
-  const resetColor = (k: ColorKey) => {
-    const { [k]: _drop, ...rest } = settings.colorOverrides
-    setSettings('colorOverrides', rest)
-  }
+  const label = (k: ColorKey) => COLOR_LABELS[k] ?? k
   const Swatch = (p: { k: ColorKey }) => (
-    <label
-      class="cpick"
-      classList={{ changed: p.k in settings.colorOverrides }}
-      title={`${COLOR_LABELS[p.k] ?? p.k}${p.k in settings.colorOverrides ? ' (double-click to reset)' : ''}`}
-      onDblClick={() => resetColor(p.k)}
-    >
-      <input
-        type="color"
-        value={current(p.k).slice(0, 7)}
-        onInput={(e) => setColor(p.k, e.currentTarget.value)}
-      />
-      <span style={{ background: current(p.k) }} />
-    </label>
+    <div class="cpick-wrap">
+      <label
+        class="cpick"
+        classList={{ changed: changed(p.k) }}
+        title={`${label(p.k)}${changed(p.k) ? ' (double-click to reset)' : ''}`}
+        onDblClick={() => resetColorOverride(p.k)}
+      >
+        <input
+          type="color"
+          aria-label={`${label(p.k)} colour`}
+          value={current(p.k).slice(0, 7)}
+          onInput={(e) => setColorOverride(p.k, e.currentTarget.value)}
+        />
+        <span style={{ background: current(p.k) }} />
+      </label>
+      <Show when={changed(p.k)}>
+        <button
+          class="cpick-reset"
+          title={`Reset ${label(p.k)}`}
+          aria-label={`Reset ${label(p.k)} colour`}
+          onClick={() => resetColorOverride(p.k)}
+        >
+          ↺
+        </button>
+      </Show>
+    </div>
   )
   return (
     <>
       <Section title="Font">
-        <label class="field">
-          <span>Font family</span>
-          <input
-            value={settings.fontFamily}
-            placeholder="JetBrainsMono Nerd Font Mono"
-            spellcheck={false}
-            onInput={(e) => setSettings('fontFamily', e.currentTarget.value)}
-          />
-        </label>
+        <FontFamily />
         <p class="set-hint">
-          Comma-separated; installed monospace fonts are tried first, then
-          built-in fallbacks.
+          Fonts you list are tried in order before the built-in fallbacks.
         </p>
         <Slider
           label="Font size"
@@ -262,7 +314,7 @@ function Terminal() {
           min={9}
           max={24}
           step={0.5}
-          format={(v) => `${v}pt`}
+          format={(v) => `${v}px`}
         />
         <Slider
           label="Line height"
@@ -275,7 +327,7 @@ function Terminal() {
       </Section>
       <Section
         title="Colours"
-        hint="Overrides sit on top of the selected theme. Double-click a swatch to reset it."
+        hint="Overrides sit on top of the selected theme. Use ↺ (or double-click a swatch) to reset one."
       >
         <div class="color-row">
           <For
@@ -302,10 +354,7 @@ function Terminal() {
           </For>
         </div>
         <Show when={Object.keys(settings.colorOverrides).length}>
-          <button
-            class="link reset"
-            onClick={() => setSettings('colorOverrides', {})}
-          >
+          <button class="link set-reset" onClick={clearColorOverrides}>
             Clear colour overrides
           </button>
         </Show>
@@ -318,7 +367,11 @@ function Tailscale() {
   const [status, { refetch, mutate }] = createResource<TailscaleStatus>(() =>
     window.rex.tailscaleStatus(),
   )
+  // Never read status() while errored: a rejected resource throws on read.
+  const data = () => (status.error ? undefined : status())
   const [busy, setBusy] = createSignal(false)
+  const [added, setAdded] = createSignal<ReadonlySet<string>>(new Set())
+  const [adding, setAdding] = createSignal<string>()
   const toggle = async (on: boolean) => {
     setBusy(true)
     try {
@@ -334,7 +387,18 @@ function Tailscale() {
       setBusy(false)
     }
   }
-  const running = () => status()?.state === 'Running'
+  const addHost = async (name: string, dns: string) => {
+    setAdding(dns)
+    try {
+      await actions.addHost(name, dns)
+      setAdded((s) => new Set(s).add(dns))
+    } catch (e) {
+      report(e)
+    } finally {
+      setAdding(undefined)
+    }
+  }
+  const running = () => data()?.state === 'Running'
   return (
     <Section title="Tailscale">
       <Show
@@ -342,77 +406,98 @@ function Tailscale() {
         fallback={<p class="set-hint">Checking Tailscale…</p>}
       >
         <Show
-          when={status()?.installed}
+          when={!status.error}
           fallback={
-            <p class="set-hint">
-              The tailscale CLI wasn’t found on this machine.
-            </p>
+            <div class="set-row-between">
+              <p class="form-error">
+                Couldn’t check Tailscale: {errText(status.error)}
+              </p>
+              <button class="btn ghost" onClick={() => void refetch()}>
+                Retry
+              </button>
+            </div>
           }
         >
-          <div class="row-between">
-            <div>
-              <div class="row-title">
-                <span class="dot" classList={{ ok: running() }} />
-                {running()
-                  ? 'Connected'
-                  : status()?.state === 'NeedsLogin'
-                    ? 'Needs login'
-                    : (status()?.state ?? 'Unknown')}
-              </div>
-              <Show when={running()}>
-                <div class="set-hint">
-                  {status()?.self?.dns || status()?.self?.name} ·{' '}
-                  {status()?.self?.ip}
-                  {status()?.tailnet ? ` · ${status()?.tailnet}` : ''}
+          <Show
+            when={data()?.installed}
+            fallback={
+              <p class="set-hint">
+                The tailscale CLI wasn’t found on this machine.
+              </p>
+            }
+          >
+            <div class="set-row-between">
+              <div>
+                <div class="set-row-title">
+                  <span class="set-dot" classList={{ ok: running() }} />
+                  {running()
+                    ? 'Connected'
+                    : data()?.state === 'NeedsLogin'
+                      ? 'Needs login'
+                      : (data()?.state ?? 'Unknown')}
                 </div>
-              </Show>
+                <Show when={running()}>
+                  <div class="set-meta">
+                    {data()?.self?.dns || data()?.self?.name} ·{' '}
+                    {data()?.self?.ip}
+                    {data()?.tailnet ? ` · ${data()?.tailnet}` : ''}
+                  </div>
+                </Show>
+              </div>
+              <div class="set-row-actions">
+                <button
+                  class="btn ghost"
+                  disabled={busy()}
+                  onClick={() => void refetch()}
+                >
+                  Refresh
+                </button>
+                <button
+                  class="btn"
+                  disabled={busy()}
+                  onClick={() => void toggle(!running())}
+                >
+                  {busy() ? 'Working…' : running() ? 'Disconnect' : 'Connect'}
+                </button>
+              </div>
             </div>
-            <div class="row-actions">
-              <button
-                class="btn ghost"
-                disabled={busy()}
-                onClick={() => void refetch()}
-              >
-                Refresh
-              </button>
-              <button
-                class="btn"
-                disabled={busy()}
-                onClick={() => void toggle(!running())}
-              >
-                {busy() ? 'Working…' : running() ? 'Disconnect' : 'Connect'}
-              </button>
-            </div>
-          </div>
-          <Show when={status()?.error}>
-            <p class="form-error">{status()?.error}</p>
-          </Show>
-          <Show when={running() && status()!.peers.length}>
-            <h5>Devices</h5>
-            <ul class="list">
-              <For each={status()!.peers}>
-                {(p) => (
-                  <li>
-                    <span class="dot" classList={{ ok: p.online }} />
-                    <div class="grow">
-                      <div class="row-title">{p.name}</div>
-                      <div class="set-hint">
-                        {p.os} · {p.ip}
+            <Show when={data()?.error}>
+              <p class="form-error">{data()?.error}</p>
+            </Show>
+            <Show when={running() && data()?.peers.length}>
+              <h5>Devices</h5>
+              <ul class="set-list">
+                <For each={data()?.peers ?? []}>
+                  {(p) => (
+                    <li>
+                      <span class="set-dot" classList={{ ok: p.online }} />
+                      <div class="set-grow">
+                        <div class="set-row-title">{p.name}</div>
+                        <div class="set-meta">
+                          {p.os} · {p.ip}
+                        </div>
                       </div>
-                    </div>
-                    <button
-                      class="btn ghost"
-                      disabled={!p.online || !p.dns}
-                      onClick={() =>
-                        void actions.addHost(p.name, p.dns).catch(report)
-                      }
-                    >
-                      Add as host
-                    </button>
-                  </li>
-                )}
-              </For>
-            </ul>
+                      <button
+                        class="btn ghost"
+                        disabled={
+                          !p.online ||
+                          !p.dns ||
+                          added().has(p.dns) ||
+                          adding() === p.dns
+                        }
+                        onClick={() => void addHost(p.name, p.dns)}
+                      >
+                        {added().has(p.dns)
+                          ? 'Added'
+                          : adding() === p.dns
+                            ? 'Adding…'
+                            : 'Add as host'}
+                      </button>
+                    </li>
+                  )}
+                </For>
+              </ul>
+            </Show>
           </Show>
         </Show>
       </Show>
@@ -422,10 +507,26 @@ function Tailscale() {
 
 function Agents() {
   const [agents, { refetch }] = createResource(() => window.rex.detectAgents())
+  const list = () =>
+    [...((agents.error ? undefined : agents()) ?? [])].sort(
+      (a, b) => Number(b.installed) - Number(a.installed),
+    )
   const launch = (command: string) => {
     const id = focusedBlockId()
     const term = id ? terminals.get(id) : undefined
-    if (!term) return toast('Open a terminal pane first.', 'error')
+    if (!id || !term) return toast('Open a terminal pane first.', 'error')
+    const server = activeServer()
+    if (!isLocalServer(server))
+      return toast(
+        `Agents run on this machine, but the focused pane is on ${server?.label ?? 'a remote server'}. Focus a Personal or Shared pane first.`,
+        'error',
+      )
+    const proc = blockMeta[id]?.process
+    if (proc && !isShellProcess(proc))
+      return toast(
+        `The focused pane is running ${proc}. Return to a shell prompt first.`,
+        'error',
+      )
     term.input(command + '\r')
     setSettingsOpen(false)
   }
@@ -435,18 +536,19 @@ function Agents() {
       hint="Detected on this machine. Launch types the command into the focused terminal pane."
     >
       <Show when={!agents.loading} fallback={<p class="set-hint">Scanning…</p>}>
-        <ul class="list">
-          <For
-            each={[...(agents() ?? [])].sort(
-              (a, b) => Number(b.installed) - Number(a.installed),
-            )}
-          >
+        <Show when={agents.error}>
+          <p class="form-error">
+            Couldn’t scan for agents: {errText(agents.error)}
+          </p>
+        </Show>
+        <ul class="set-list">
+          <For each={list()}>
             {(a) => (
               <li classList={{ dim: !a.installed }}>
-                <span class="dot" classList={{ ok: a.installed }} />
-                <div class="grow">
-                  <div class="row-title">{a.name}</div>
-                  <div class="set-hint">
+                <span class="set-dot" classList={{ ok: a.installed }} />
+                <div class="set-grow">
+                  <div class="set-row-title">{a.name}</div>
+                  <div class="set-meta">
                     {a.installed
                       ? (a.version ?? a.path)
                       : `${a.command} not found`}
@@ -461,7 +563,7 @@ function Agents() {
             )}
           </For>
         </ul>
-        <button class="link reset" onClick={() => void refetch()}>
+        <button class="link set-reset" onClick={() => void refetch()}>
           Rescan
         </button>
       </Show>
@@ -469,17 +571,102 @@ function Agents() {
   )
 }
 
+const FOCUSABLE =
+  'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
 export function SettingsDialog() {
   const [tab, setTab] = createSignal<Tab>('appearance')
-  onMount(() => {
-    const esc = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
-      e.stopPropagation()
-      setSettingsOpen(false)
+  const [confirmReset, setConfirmReset] = createSignal(false)
+  let dialogEl!: HTMLDivElement
+  let resetTimer: ReturnType<typeof setTimeout> | undefined
+  const tabButtons: Partial<Record<Tab, HTMLButtonElement>> = {}
+
+  const onReset = () => {
+    clearTimeout(resetTimer)
+    if (confirmReset()) {
+      setConfirmReset(false)
+      resetSettings()
+      return
     }
-    window.addEventListener('keydown', esc, true)
-    onCleanup(() => window.removeEventListener('keydown', esc, true))
+    setConfirmReset(true)
+    resetTimer = setTimeout(() => setConfirmReset(false), 3000)
+  }
+
+  const onTabKey = (e: KeyboardEvent) => {
+    const i = TABS.findIndex(([id]) => id === tab())
+    const next =
+      e.key === 'ArrowDown' || e.key === 'ArrowRight'
+        ? (i + 1) % TABS.length
+        : e.key === 'ArrowUp' || e.key === 'ArrowLeft'
+          ? (i - 1 + TABS.length) % TABS.length
+          : e.key === 'Home'
+            ? 0
+            : e.key === 'End'
+              ? TABS.length - 1
+              : -1
+    if (next < 0) return
+    e.preventDefault()
+    const id = TABS[next][0]
+    setTab(id)
+    tabButtons[id]?.focus()
+  }
+
+  onMount(() => {
+    const previous = document.activeElement as HTMLElement | null
+    tabButtons[tab()]?.focus()
+
+    const onKey = (e: KeyboardEvent) => {
+      // Keystrokes never reach the panes behind the dialog.
+      if (!dialogEl.contains(e.target as Node)) {
+        e.preventDefault()
+        e.stopPropagation()
+        if (e.key !== 'Escape') {
+          dialogEl.focus()
+          return
+        }
+      }
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        setSettingsOpen(false)
+        return
+      }
+      if (e.key !== 'Tab') return
+      const items = [
+        ...dialogEl.querySelectorAll<HTMLElement>(FOCUSABLE),
+      ].filter((el) => el.getClientRects().length)
+      if (!items.length) return
+      const first = items[0]
+      const last = items[items.length - 1]
+      const active = document.activeElement
+      const inside = !!active && dialogEl.contains(active)
+      if (e.shiftKey && (!inside || active === first || active === dialogEl)) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && (!inside || active === last)) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+    window.addEventListener('keydown', onKey, true)
+    onCleanup(() => {
+      window.removeEventListener('keydown', onKey, true)
+      clearTimeout(resetTimer)
+      // Restore focus once the dialog has left the DOM.
+      queueMicrotask(() => {
+        if (
+          previous?.isConnected &&
+          previous !== document.body &&
+          !previous.closest('.xterm')
+        )
+          previous.focus()
+        else {
+          const id = focusedBlockId()
+          if (id) terminals.get(id)?.focus()
+        }
+      })
+    })
   })
+
   return (
     <div
       class="scrim"
@@ -488,34 +675,53 @@ export function SettingsDialog() {
       }
     >
       <div
+        ref={dialogEl}
         class="settings-dialog glass lens"
         role="dialog"
         aria-modal="true"
-        aria-label="Settings"
+        aria-labelledby="set-title"
+        tabIndex={-1}
       >
         <nav class="set-nav">
-          <h3>Settings</h3>
-          <For each={TABS}>
-            {([id, label]) => (
-              <button
-                classList={{ on: tab() === id }}
-                onClick={() => setTab(id)}
-              >
-                {label}
-              </button>
-            )}
-          </For>
-          <button
-            class="link reset"
-            onClick={() => {
-              const { sidebarOpen } = settings
-              setSettings({ ...DEFAULT_SETTINGS, sidebarOpen })
-            }}
+          <h3 id="set-title">Settings</h3>
+          <div
+            class="set-tabs"
+            role="tablist"
+            aria-orientation="vertical"
+            aria-labelledby="set-title"
+            onKeyDown={onTabKey}
           >
-            Reset to defaults
+            <For each={TABS}>
+              {([id, label]) => (
+                <button
+                  ref={(el) => (tabButtons[id] = el)}
+                  id={`set-tab-${id}`}
+                  role="tab"
+                  aria-selected={tab() === id}
+                  aria-controls="set-panel"
+                  tabIndex={tab() === id ? 0 : -1}
+                  classList={{ on: tab() === id }}
+                  onClick={() => setTab(id)}
+                >
+                  {label}
+                </button>
+              )}
+            </For>
+          </div>
+          <button
+            class="link set-reset"
+            classList={{ confirm: confirmReset() }}
+            onClick={onReset}
+          >
+            {confirmReset() ? 'Click again to confirm' : 'Reset to defaults'}
           </button>
         </nav>
-        <div class="set-body">
+        <div
+          class="set-body"
+          id="set-panel"
+          role="tabpanel"
+          aria-labelledby={`set-tab-${tab()}`}
+        >
           <Show when={tab() === 'appearance'}>
             <Appearance />
           </Show>

@@ -1,4 +1,4 @@
-import type { ProcessInfo } from '../../../shared/ipc'
+import type { ProcessInfo, ServerInfo } from '../../../shared/ipc'
 
 const base = (p: string) => p.replace(/\/+$/, '').split('/').pop() || p
 
@@ -69,6 +69,18 @@ const GLYPHS: [RegExp, Glyph][] = [
 export function processGlyph(name: string): Glyph {
   for (const [re, g] of GLYPHS) if (re.test(name)) return g
   return TERMINAL
+}
+
+const SHELLS = /^(ba|z|fi|da|k|mk|tc|c|xon|elvi|o|yash|nu|pw)?sh$|^(nu|elvish|xonsh|pwsh|ion)$/i
+
+/** Whether a block's process label names an interactive shell. */
+export function isShellProcess(name: string) {
+  return SHELLS.test(base(name).replace(/^-/, ''))
+}
+
+/** Servers reached over a local unix socket run on this machine. */
+export function isLocalServer(s?: Pick<ServerInfo, 'kind' | 'address'>) {
+  return !!s && s.kind !== 'remote' && s.address.startsWith('unix:')
 }
 
 /** Rex default window labels look like "Window 37fd84a3". */

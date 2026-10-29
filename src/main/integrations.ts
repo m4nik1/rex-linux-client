@@ -4,27 +4,37 @@ import { homedir } from 'node:os'
 import { delimiter, join } from 'node:path'
 import type { AgentInfo, TailscalePeer, TailscaleStatus } from '../shared/ipc'
 
+export interface RunResult {
+  stdout: string
+  stderr: string
+  /** Exit status; null when the process could not run or was killed. */
+  code: number | null
+  /** Spawn errno such as 'ENOENT' when the binary could not be started. */
+  errno?: string
+  /** True when the process was killed for exceeding its timeout. */
+  timedOut: boolean
+}
+
 function run(cmd: string, args: string[], timeout: number) {
-  return new Promise<{ stdout: string; stderr: string; code: number | null }>(
-    (resolve) => {
-      execFile(
-        cmd,
-        args,
-        { timeout, maxBuffer: 4 << 20 },
-        (err, stdout, stderr) => {
-          const code = err
-            ? ((err as NodeJS.ErrnoException & { code?: unknown })
-                .code as never)
-            : 0
-          resolve({
-            stdout,
-            stderr,
-            code: typeof code === 'number' ? code : err ? null : 0,
-          })
-        },
-      )
-    },
-  )
+  return new Promise<RunResult>((resolve) => {
+    execFile(
+      cmd,
+      args,
+      { timeout, maxBuffer: 4 << 20 },
+      (err, stdout, stderr) => {
+        const e = err as
+          | (Error & { code?: unknown; killed?: boolean; signal?: unknown })
+          | null
+        resolve({
+          stdout: String(stdout ?? ''),
+          stderr: String(stderr ?? ''),
+          code: !e ? 0 : typeof e.code === 'number' ? e.code : null,
+          errno: typeof e?.code === 'string' ? e.code : undefined,
+          timedOut: !!e?.killed && !!e.signal,
+        })
+      },
+    )
+  })
 }
 
 const AGENTS: { id: string; name: string; command: string }[] = [
@@ -129,8 +139,17 @@ export function parseTailscale(json: string): TailscaleStatus {
   }
 }
 
-export async function tailscaleStatus(): Promise<TailscaleStatus> {
-  const r = await run('tailscale', ['status', '--json'], 5000)
+/** Interpret `tailscale status --json`; pure so it can be unit tested. */
+export function tailscaleStatusFrom(r: RunResult): TailscaleStatus {
+  if (r.errno === 'ENOENT')
+    return { installed: false, state: 'NotInstalled', peers: [] }
+  if (r.timedOut)
+    return {
+      installed: true,
+      state: 'Error',
+      error: 'tailscale timed out',
+      peers: [],
+    }
   // Exit code is non-zero when stopped, but the JSON is still valid.
   if (r.stdout.trim().startsWith('{')) {
     try {
@@ -139,15 +158,33 @@ export async function tailscaleStatus(): Promise<TailscaleStatus> {
       /* fall through */
     }
   }
-  if (r.code === null && /ENOENT/.test(r.stderr + ''))
-    return { installed: false, state: 'NotInstalled', peers: [] }
-  const missing = !r.stdout && !r.stderr
   return {
-    installed: !missing,
-    state: missing ? 'NotInstalled' : 'Error',
-    error: r.stderr.trim().split('\n')[0] || undefined,
+    installed: true,
+    state: 'Error',
+    error:
+      r.stderr.trim().split('\n')[0] ||
+      (r.errno ? `tailscale failed (${r.errno})` : undefined),
     peers: [],
   }
+}
+
+export const OPERATOR_HINT = 'Run: sudo tailscale set --operator=$USER'
+
+/** Error to show for a failed `tailscale up`/`down`, if any. */
+export function tailscaleSetError(r: RunResult): string | undefined {
+  if (r.code === 0) return undefined
+  if (r.errno === 'ENOENT') return 'The tailscale CLI wasn’t found.'
+  if (r.timedOut) return 'tailscale timed out'
+  const text = r.stderr + r.stdout
+  if (/access denied|operator|permission denied/i.test(text))
+    return OPERATOR_HINT
+  return r.stderr.trim().split('\n').pop() || undefined
+}
+
+export async function tailscaleStatus(): Promise<TailscaleStatus> {
+  return tailscaleStatusFrom(
+    await run('tailscale', ['status', '--json'], 5000),
+  )
 }
 
 /** Bring Tailscale up or down; returns a login URL when interactive auth is needed. */
@@ -159,11 +196,9 @@ export async function tailscaleSet(on: boolean): Promise<TailscaleStatus> {
     authUrl = /https:\/\/login\.tailscale\.com\/\S+/.exec(
       r.stdout + r.stderr,
     )?.[0]
-    if (!authUrl && r.code !== 0)
-      error = r.stderr.trim().split('\n').pop() || undefined
+    if (!authUrl) error = tailscaleSetError(r)
   } else {
-    const r = await run('tailscale', ['down'], 8000)
-    if (r.code !== 0) error = r.stderr.trim().split('\n').pop() || undefined
+    error = tailscaleSetError(await run('tailscale', ['down'], 8000))
   }
   const status = await tailscaleStatus()
   return {

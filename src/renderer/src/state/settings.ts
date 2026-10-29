@@ -1,4 +1,4 @@
-import { createStore } from 'solid-js/store'
+import { createStore, reconcile } from 'solid-js/store'
 import { createEffect, createSignal } from 'solid-js'
 import { COLOR_KEYS, hex, type ColorKey } from '../lib/theme'
 import { THEMES, REX_THEME_ID } from '../lib/themes'
@@ -49,6 +49,30 @@ export const DEFAULT_SETTINGS: Settings = {
 
 const KEY = 'rex-gui:settings:v2'
 
+/** Fresh defaults; never hand the shared DEFAULT_SETTINGS objects to the store. */
+const defaults = (): Settings => ({ ...DEFAULT_SETTINGS, colorOverrides: {} })
+
+/**
+ * Sanitise a comma-separated font list: strip quotes, backslashes, semicolons,
+ * braces and newlines from each name so it is safe inside a CSS font stack.
+ */
+export function cleanFontFamily(raw: unknown): string {
+  if (typeof raw !== 'string') return ''
+  return raw
+    .split(',')
+    .map((f) => f.replace(/["'\\;{}]/g, '').replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .join(', ')
+    .slice(0, 120)
+}
+
+/** Font names from the setting, in order, ready to quote. */
+export const fontNames = (raw: string) =>
+  cleanFontFamily(raw)
+    .split(',')
+    .map((f) => f.trim())
+    .filter(Boolean)
+
 function cleanOverrides(raw: unknown) {
   const out: Partial<Record<ColorKey, string>> = {}
   if (raw && typeof raw === 'object')
@@ -62,7 +86,7 @@ function cleanOverrides(raw: unknown) {
 export function loadSettings(raw: string | null): Settings {
   try {
     const parsed = raw ? JSON.parse(raw) : {}
-    const s = { ...DEFAULT_SETTINGS, ...parsed } as Settings
+    const s = { ...defaults(), ...parsed } as Settings
     const clamp = (v: unknown, lo: number, hi: number, d: number) =>
       typeof v === 'number' && Number.isFinite(v)
         ? Math.min(hi, Math.max(lo, v))
@@ -73,21 +97,38 @@ export function loadSettings(raw: string | null): Settings {
       blur: clamp(s.blur, 0, 48, DEFAULT_SETTINGS.blur),
       desktopBlur: clamp(s.desktopBlur, 0, 64, DEFAULT_SETTINGS.desktopBlur),
       fontSize: clamp(s.fontSize, 9, 24, DEFAULT_SETTINGS.fontSize),
-      fontFamily: typeof s.fontFamily === 'string' ? s.fontFamily.replace(/[;{}\n\r]/g, '').slice(0, 120) : '',
+      fontFamily: cleanFontFamily(s.fontFamily),
       lineHeight: clamp(s.lineHeight, 1, 2, DEFAULT_SETTINGS.lineHeight),
-      colorScheme: s.colorScheme === REX_THEME_ID || s.colorScheme in THEMES ? s.colorScheme : REX_THEME_ID,
+      colorScheme: s.colorScheme === REX_THEME_ID ||
+        (typeof s.colorScheme === 'string' && Object.hasOwn(THEMES, s.colorScheme)) ? s.colorScheme : REX_THEME_ID,
       colorOverrides: cleanOverrides(s.colorOverrides),
-      accent: s.accent in ACCENTS ? s.accent : DEFAULT_SETTINGS.accent,
+      accent:
+        typeof s.accent === 'string' && Object.hasOwn(ACCENTS, s.accent)
+          ? s.accent
+          : DEFAULT_SETTINGS.accent,
       sidebarOpen: !!s.sidebarOpen,
     }
   } catch {
-    return { ...DEFAULT_SETTINGS }
+    return defaults()
   }
 }
 
 export const [settings, setSettings] = createStore<Settings>(
   loadSettings(typeof localStorage === 'undefined' ? null : localStorage.getItem(KEY)),
 )
+
+// The store setter shallow-merges objects, so deletes must be explicit.
+export const setColorOverride = (k: ColorKey, value: string) =>
+  setSettings('colorOverrides', k, value)
+export const resetColorOverride = (k: ColorKey) =>
+  setSettings('colorOverrides', k, undefined)
+export const clearColorOverrides = () =>
+  setSettings('colorOverrides', reconcile({}))
+/** Restore every setting except the sidebar state. */
+export function resetSettings() {
+  const { sidebarOpen } = settings
+  setSettings(reconcile({ ...defaults(), sidebarOpen }))
+}
 
 /** Whether the compositor accepted desktop blur control (Hyprland only). */
 export const [desktopBlurSupported, setDesktopBlurSupported] = createSignal(false)

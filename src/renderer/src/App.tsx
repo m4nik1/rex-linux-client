@@ -1,4 +1,4 @@
-import { onCleanup, onMount, Show } from 'solid-js'
+import { createEffect, onCleanup, onMount, Show } from 'solid-js'
 import { matchShortcut, type ShortcutAction } from './lib/keys'
 import { bindSettings } from './state/settings'
 import {
@@ -79,6 +79,10 @@ async function runShortcut(a: ShortcutAction) {
 
 export function App() {
   bindSettings()
+  // The palette never stacks on Settings, whichever way it was opened.
+  createEffect(() => {
+    if (paletteOpen()) setSettingsOpen(false)
+  })
   onMount(() => {
     const off = [
       window.rex.onServerState(upsertServer),
@@ -95,6 +99,13 @@ export function App() {
       if (!a) return
       const inField = (e.target as HTMLElement | null)?.matches?.('input, textarea:not(.xterm-helper-textarea)')
       if (inField && (a === 'copy' || a === 'paste')) return
+      if (settingsOpen() && a !== 'settings') {
+        // Settings is modal: swallow app chords (palette included) so nothing
+        // stacks on it or acts on the panes behind it.
+        e.preventDefault()
+        e.stopPropagation()
+        return
+      }
       if ((dialog() || paletteOpen()) && a !== 'palette') return
       e.preventDefault()
       e.stopPropagation()

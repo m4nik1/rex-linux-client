@@ -12,9 +12,9 @@ import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { WebglAddon } from '@xterm/addon-webgl'
 import type { Unsubscribe } from '../../../shared/ipc'
-import { settings } from '../state/settings'
+import { fontNames, settings } from '../state/settings'
 import { report, toast } from '../state/toasts'
-import { terminals } from '../state/terminals'
+import { setFocusedRexColors, terminals } from '../state/terminals'
 import { matchShortcut } from '../lib/keys'
 import { composeTheme, DEFAULT_THEME, rexTheme, withAlpha } from '../lib/theme'
 import { THEMES } from '../lib/themes'
@@ -34,11 +34,7 @@ export const TERMINAL_FONT =
   '"JetBrainsMono Nerd Font Mono", "JetBrainsMono NFM", "JetBrains Mono", "DejaVu Sans Mono", ui-monospace, monospace'
 
 export const terminalFont = () => {
-  const own = settings.fontFamily
-    .split(',')
-    .map((f) => f.trim().replace(/^["']|["']$/g, ''))
-    .filter(Boolean)
-    .map((f) => `"${f}"`)
+  const own = fontNames(settings.fontFamily).map((f) => `"${f}"`)
   return [...own, TERMINAL_FONT].join(', ')
 }
 
@@ -209,6 +205,10 @@ export function TerminalPane(props: {
       { defer: true },
     ),
   )
+  // Publish the server's colours for the focused pane (Settings previews them).
+  createEffect(() => {
+    if (props.focused) setFocusedRexColors(rexColors())
+  })
   // Follow Rex's focus (keyboard focus moves, other clients) without stealing
   // focus from dialogs or the palette.
   createEffect(() => {

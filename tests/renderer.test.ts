@@ -9,10 +9,22 @@ import {
   processGlyph,
   isDefaultWindowLabel,
   parseHostInput,
+  isShellProcess,
+  isLocalServer,
 } from '../src/renderer/src/lib/format'
 import { matchShortcut } from '../src/renderer/src/lib/keys'
 import { rexTheme, withAlpha, composeTheme } from '../src/renderer/src/lib/theme'
-import { loadSettings, DEFAULT_SETTINGS } from '../src/renderer/src/state/settings'
+import {
+  loadSettings,
+  DEFAULT_SETTINGS,
+  cleanFontFamily,
+  settings,
+  setSettings,
+  setColorOverride,
+  resetColorOverride,
+  clearColorOverrides,
+  resetSettings,
+} from '../src/renderer/src/state/settings'
 
 const win = (zoom?: string): RexWindow => ({
   window_id: 'w',
@@ -102,6 +114,15 @@ describe('format', () => {
     expect(parseHostInput('').ok).toBe(false)
     expect(parseHostInput('two words').ok).toBe(false)
   })
+  it('recognises shells and local servers', () => {
+    expect(['fish', 'zsh', 'bash', '-bash', '/bin/sh', 'nu', 'pwsh'].every(isShellProcess)).toBe(true)
+    expect(['nvim', 'Node', 'claude', 'ssh', 'htop'].some(isShellProcess)).toBe(false)
+    expect(isLocalServer({ kind: 'personal', address: 'unix:///run/user/1000/rex/server.sock' })).toBe(true)
+    expect(isLocalServer({ kind: 'shared', address: 'unix:///run/rex/server.sock' })).toBe(true)
+    expect(isLocalServer({ kind: 'remote', address: 'box.tail.ts.net' })).toBe(false)
+    expect(isLocalServer({ kind: 'personal', address: 'tcp://10.0.0.2:7297' })).toBe(false)
+    expect(isLocalServer(undefined)).toBe(false)
+  })
 })
 
 describe('shortcuts', () => {
@@ -152,6 +173,38 @@ describe('theme & settings', () => {
     expect(s.fontFamily).toBe('Fira')
     expect(s.colorOverrides).toEqual({ red: '#ff0000' })
   })
+  it('rejects inherited keys for scheme and accent', () => {
+    const s = loadSettings('{"colorScheme":"constructor","accent":"constructor"}')
+    expect(s.colorScheme).toBe('rex')
+    expect(s.accent).toBe('glacier')
+    expect(loadSettings('{"accent":"toString","colorScheme":"__proto__"}')).toMatchObject({ accent: 'glacier', colorScheme: 'rex' })
+    expect(loadSettings('{"accent":"mint"}').accent).toBe('mint')
+  })
+  it('sanitises each font name', () => {
+    expect(cleanFontFamily(' "Fira Code" , \'Iosevka\'; , {x}, a\\b ,, ')).toBe('Fira Code, Iosevka, x, ab')
+    expect(cleanFontFamily(42)).toBe('')
+    expect(loadSettings('{"fontFamily":"\\"Fira\\" }; body{"}').fontFamily).toBe('Fira body')
+  })
+  it('never shares default objects with loaded settings', () => {
+    expect(loadSettings('garbage').colorOverrides).not.toBe(DEFAULT_SETTINGS.colorOverrides)
+    expect(loadSettings(null).colorOverrides).not.toBe(DEFAULT_SETTINGS.colorOverrides)
+  })
+  it('resets single colours, all colours and all settings', () => {
+    setColorOverride('red', '#aa0000')
+    setColorOverride('blue', '#0000aa')
+    resetColorOverride('red')
+    expect({ ...settings.colorOverrides }).toEqual({ blue: '#0000aa' })
+    setColorOverride('green', '#00aa00')
+    clearColorOverrides()
+    expect(Object.keys(settings.colorOverrides)).toEqual([])
+    setColorOverride('cyan', '#00aaaa')
+    setSettings({ fontSize: 20, sidebarOpen: true })
+    resetSettings()
+    expect(Object.keys(settings.colorOverrides)).toEqual([])
+    expect(settings.fontSize).toBe(DEFAULT_SETTINGS.fontSize)
+    expect(settings.sidebarOpen).toBe(true)
+    expect(DEFAULT_SETTINGS.colorOverrides).toEqual({})
+  })
   it('composes preset and overrides over the Rex theme', () => {
     const base = rexTheme({ type: 'theme', background: '#101010' })
     const t = composeTheme(base, { background: '#222222', red: '#aa0000' }, { red: '#bb0000', background: '#333333' })
@@ -162,7 +215,7 @@ describe('theme & settings', () => {
   })
 })
 
-import { parseTailscale } from '../src/main/integrations'
+import { parseTailscale, tailscaleStatusFrom, tailscaleSetError, OPERATOR_HINT } from '../src/main/integrations'
 describe('tailscale status', () => {
   it('parses peers, online first', () => {
     const s = parseTailscale(
@@ -178,5 +231,18 @@ describe('tailscale status', () => {
     expect(s.state).toBe('Running')
     expect(s.self?.dns).toBe('me.tail.ts.net')
     expect(s.peers.map((p) => p.name)).toEqual(['box', 'zed'])
+  })
+  const r = (o: Partial<Parameters<typeof tailscaleStatusFrom>[0]>) => ({ stdout: '', stderr: '', code: 1, timedOut: false, ...o })
+  it('maps missing CLI, timeouts and errors', () => {
+    expect(tailscaleStatusFrom(r({ code: null, errno: 'ENOENT' }))).toMatchObject({ installed: false, state: 'NotInstalled' })
+    expect(tailscaleStatusFrom(r({ code: null, timedOut: true }))).toMatchObject({ installed: true, state: 'Error', error: 'tailscale timed out' })
+    expect(tailscaleStatusFrom(r({ stderr: 'failed to connect to local tailscaled\nmore' }))).toMatchObject({ state: 'Error', error: 'failed to connect to local tailscaled' })
+    expect(tailscaleStatusFrom(r({ stdout: '{"BackendState":"Stopped"}' })).state).toBe('Stopped')
+  })
+  it('hints at the operator setting when up is denied', () => {
+    expect(tailscaleSetError(r({ code: 0 }))).toBeUndefined()
+    expect(tailscaleSetError(r({ stderr: 'Access denied: prefs write access denied\nUse sudo tailscale up' }))).toBe(OPERATOR_HINT)
+    expect(tailscaleSetError(r({ code: null, timedOut: true }))).toBe('tailscale timed out')
+    expect(tailscaleSetError(r({ stderr: 'boom\nlast line' }))).toBe('last line')
   })
 })
