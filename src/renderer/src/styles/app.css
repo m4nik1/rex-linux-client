@@ -974,9 +974,20 @@ kbd {
   grid-template-columns: 170px 1fr;
   width: min(720px, calc(100vw - 32px));
   height: min(520px, calc(100vh - 48px));
-  border-radius: var(--r-lg);
+  border-radius: var(--r-md);
   overflow: hidden;
+<<<<<<< Updated upstream
   animation: pop var(--t-mid) var(--ease-out);
+=======
+  background: #11161e;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  box-shadow: 0 18px 48px -12px rgb(0 0 0 / 0.6);
+  animation: pop var(--t-spring) var(--spring);
+>>>>>>> Stashed changes
+}
+.settings-dialog button:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 .settings-dialog:focus {
   outline: none;
@@ -1364,4 +1375,48 @@ kbd {
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* ---------- settings dialog: flat controls ---------- */
+.settings-dialog .slider input::-webkit-slider-runnable-track {
+  box-shadow: none;
+}
+.settings-dialog .slider input::-webkit-slider-thumb {
+  width: 14px;
+  height: 14px;
+  margin-top: -4.5px;
+  background: #e7edf4;
+  box-shadow: none;
+}
+.settings-dialog .swatch {
+  background: var(--c);
+  box-shadow: none;
+}
+.settings-dialog .swatch.on {
+  box-shadow:
+    0 0 0 2px #11161e,
+    0 0 0 3.5px var(--c);
+}
+.settings-dialog .btn {
+  background: var(--accent);
+  box-shadow: none;
+}
+.settings-dialog .btn.ghost {
+  background: rgb(255 255 255 / 0.07);
+}
+.settings-dialog .field input {
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.1);
+  background: rgb(255 255 255 / 0.04);
+}
+.settings-dialog .set-nav > button.on,
+.settings-dialog .set-nav > button.on:hover {
+  background: rgb(255 255 255 / 0.08);
+}
+.settings-dialog .theme-card {
+  box-shadow: none;
+  border: 1px solid rgb(255 255 255 / 0.08);
+}
+.settings-dialog .theme-card.on {
+  box-shadow: none;
+  border-color: var(--accent);
 }

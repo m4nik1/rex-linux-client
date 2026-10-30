@@ -676,7 +676,7 @@ export function SettingsDialog() {
     >
       <div
         ref={dialogEl}
-        class="settings-dialog glass lens"
+        class="settings-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby="set-title"
