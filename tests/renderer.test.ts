@@ -13,7 +13,7 @@ import {
   isLocalServer,
 } from '../src/renderer/src/lib/format'
 import { matchShortcut } from '../src/renderer/src/lib/keys'
-import { rexTheme, withAlpha, composeTheme } from '../src/renderer/src/lib/theme'
+import { omarchyTheme, rexTheme, withAlpha, composeTheme } from '../src/renderer/src/lib/theme'
 import {
   loadSettings,
   DEFAULT_SETTINGS,
@@ -25,6 +25,7 @@ import {
   clearColorOverrides,
   resetSettings,
 } from '../src/renderer/src/state/settings'
+import { parseColors } from '../src/main/omarchy-theme'
 
 const win = (zoom?: string): RexWindow => ({
   window_id: 'w',
@@ -160,7 +161,7 @@ describe('theme & settings', () => {
   })
   it('loads and clamps persisted settings', () => {
     expect(loadSettings(null)).toEqual(DEFAULT_SETTINGS)
-    expect(loadSettings('{"fontSize":99,"accent":"nope","blur":4}')).toMatchObject({ fontSize: 24, accent: 'glacier', blur: 4 })
+    expect(loadSettings('{"fontSize":99,"accent":"nope","blur":4}')).toMatchObject({ fontSize: 24, accent: 'omarchy', blur: 4 })
     expect(loadSettings('{"desktopBlur":200}').desktopBlur).toBe(64)
     expect(loadSettings('garbage')).toEqual(DEFAULT_SETTINGS)
   })
@@ -176,8 +177,8 @@ describe('theme & settings', () => {
   it('rejects inherited keys for scheme and accent', () => {
     const s = loadSettings('{"colorScheme":"constructor","accent":"constructor"}')
     expect(s.colorScheme).toBe('rex')
-    expect(s.accent).toBe('glacier')
-    expect(loadSettings('{"accent":"toString","colorScheme":"__proto__"}')).toMatchObject({ accent: 'glacier', colorScheme: 'rex' })
+    expect(s.accent).toBe(DEFAULT_SETTINGS.accent)
+    expect(loadSettings('{"accent":"toString","colorScheme":"__proto__"}')).toMatchObject({ accent: DEFAULT_SETTINGS.accent, colorScheme: 'rex' })
     expect(loadSettings('{"accent":"mint"}').accent).toBe('mint')
   })
   it('sanitises each font name', () => {
@@ -244,5 +245,19 @@ describe('tailscale status', () => {
     expect(tailscaleSetError(r({ stderr: 'Access denied: prefs write access denied\nUse sudo tailscale up' }))).toBe(OPERATOR_HINT)
     expect(tailscaleSetError(r({ code: null, timedOut: true }))).toBe('tailscale timed out')
     expect(tailscaleSetError(r({ stderr: 'boom\nlast line' }))).toBe('last line')
+  })
+})
+
+describe('Omarchy theme', () => {
+  it('maps an Omarchy colors.toml onto the terminal, under Rex', () => {
+    const c = parseColors(
+      'mode = "dark"\n\naccent = "#ff9f0a"\nbackground = "#1c1c1e"\nforeground = "#f5f5f7"\nred = "#ff5f4a"\nbright_red = "#ff8373"\nmuted = "#8e8e93"\n',
+    )
+    expect(c.accent).toBe('#ff9f0a')
+    const base = omarchyTheme(c)
+    expect(base).toMatchObject({ background: '#1c1c1e', red: '#ff5f4a', brightRed: '#ff8373', brightBlack: '#8e8e93' })
+    // Missing keys keep the built-in palette; Rex's own colors still win.
+    expect(base.blue).toBe('#6cb6ff')
+    expect(rexTheme({ type: 'theme', palette: ['1=#ff0000'] }, base)).toMatchObject({ red: '#ff0000', background: '#1c1c1e' })
   })
 })

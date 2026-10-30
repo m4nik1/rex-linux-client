@@ -58,9 +58,37 @@ export const hex = (value?: string) => {
   return undefined
 }
 
-/** Convert a Rex theme meta event into an xterm theme over the default. */
-export function rexTheme(meta: Extract<TerminalMeta, { type: 'theme' }>): ITheme {
-  const theme: ITheme = { ...DEFAULT_THEME }
+/** An xterm theme from Omarchy's colors.toml, over the default for anything missing. */
+export function omarchyTheme(c: Record<string, string>): ITheme {
+  const pick = (...keys: string[]) => keys.map((k) => hex(c[k])).find(Boolean)
+  const t: ITheme = { ...DEFAULT_THEME }
+  const set = (name: keyof ITheme, ...keys: string[]) => {
+    const v = pick(...keys)
+    if (v) (t as Record<string, string>)[name] = v
+  }
+  set('foreground', 'foreground')
+  set('background', 'background')
+  set('cursorAccent', 'background')
+  set('cursor', 'cursor', 'foreground')
+  set('selectionBackground', 'selection_background', 'selection')
+  set('selectionForeground', 'selection_foreground')
+  set('black', 'color0', 'darker_background', 'lighter_background')
+  set('brightBlack', 'color8', 'muted')
+  set('white', 'color7', 'dark_foreground')
+  set('brightWhite', 'color15', 'bright_foreground')
+  for (const [i, name] of (['red', 'green', 'yellow', 'blue', 'magenta', 'cyan'] as const).entries()) {
+    set(name, `color${i + 1}`, name)
+    set(NAMES[i + 9], `color${i + 9}`, `bright_${name}`, name)
+  }
+  return t
+}
+
+/** Convert a Rex theme meta event into an xterm theme over `base`. */
+export function rexTheme(
+  meta: Extract<TerminalMeta, { type: 'theme' }>,
+  base: ITheme = DEFAULT_THEME,
+): ITheme {
+  const theme: ITheme = { ...base }
   if (hex(meta.foreground)) theme.foreground = hex(meta.foreground)
   if (hex(meta.background)) {
     theme.background = hex(meta.background)

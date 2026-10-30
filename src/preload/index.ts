@@ -24,6 +24,7 @@ for (const [method, channel] of Object.entries({
   onBlockEvent: 'blockEvent',
   onServerEvent: 'serverEvent',
   onMaximizeChange: 'maximized',
+  onOmarchyTheme: 'omarchyTheme',
 }))
   api[method] = (cb: (...args: any[]) => void) =>
     subscribe(`rex:${channel}`, cb)

@@ -11,12 +11,12 @@ import { FitAddon } from '@xterm/addon-fit'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { WebglAddon } from '@xterm/addon-webgl'
-import type { Unsubscribe } from '../../../shared/ipc'
-import { fontNames, settings } from '../state/settings'
+import type { TerminalMeta, Unsubscribe } from '../../../shared/ipc'
+import { fontNames, omarchy, settings } from '../state/settings'
 import { report, toast } from '../state/toasts'
 import { setFocusedRexColors, terminals } from '../state/terminals'
 import { matchShortcut } from '../lib/keys'
-import { composeTheme, DEFAULT_THEME, rexTheme, withAlpha } from '../lib/theme'
+import { composeTheme, DEFAULT_THEME, omarchyTheme, rexTheme, withAlpha } from '../lib/theme'
 import { THEMES } from '../lib/themes'
 import { actions, blockMeta, blockTitle } from '../state/store'
 import { paletteOpen, settingsOpen, dialog } from '../state/ui'
@@ -62,9 +62,15 @@ export function TerminalPane(props: {
   let handle: string | undefined
   let disposed = false
   const cleanups: Unsubscribe[] = []
-  const [rexColors, setTheme] = createSignal<ITheme>(DEFAULT_THEME)
-  const theme = () =>
-    composeTheme(rexColors(), THEMES[settings.colorScheme]?.theme, settings.colorOverrides)
+  // Rex's own theme for this block, layered over the Omarchy theme when there is one.
+  const [rexMeta, setRexMeta] = createSignal<Extract<TerminalMeta, { type: 'theme' }>>()
+  const rexColors = (): ITheme => {
+    const c = omarchy()?.colors
+    const base = c ? omarchyTheme(c) : DEFAULT_THEME
+    const meta = rexMeta()
+    return meta ? rexTheme(meta, base) : base
+  }
+  const theme = () => composeTheme(rexColors(), THEMES[settings.colorScheme]?.theme, settings.colorOverrides)
   const [state, setState] = createSignal<'connecting' | 'live' | 'reconnecting' | 'closed'>(
     'connecting',
   )
@@ -154,7 +160,7 @@ export function TerminalPane(props: {
       cleanups.push(window.rex.onTerminalData(id, (data) => term.write(data)))
       cleanups.push(
         window.rex.onTerminalMeta(id, (meta) => {
-          if (meta.type === 'theme') setTheme(rexTheme(meta))
+          if (meta.type === 'theme') setRexMeta(meta)
           else if (meta.type === 'child_exited') {
             term.write(`\r\n\x1b[2m[process exited with code ${meta.exit_code}]\x1b[0m\r\n`)
           } else if (meta.type === 'connection') {

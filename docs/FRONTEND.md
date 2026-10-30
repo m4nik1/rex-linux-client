@@ -1,6 +1,8 @@
 # Rex GUI frontend
 
-This is the SolidJS renderer that sits on top of the backend described in `docs/BACKEND.md`. It aims for the Ghostty and Rex.app look: one slim titlebar row with window dots, a sidebar toggle, pill tabs and icons on the right. Each pane has a small header and the terminal fills the rest. Chrome uses "liquid glass" materials over a dark navy base.
+This is the SolidJS renderer that sits on top of the backend described in `docs/BACKEND.md`. It aims for the Ghostty and Rex.app look: one slim titlebar row with a sidebar toggle, tabs, icons and window controls on the right. Each pane has a small header and the terminal fills the rest. Chrome is flat: solid surfaces, hairline borders and no decorative gradients or glows, coloured by the Omarchy theme when there is one.
+
+On startup the app reopens the last session if it still exists. Otherwise it connects to the local server and opens its first session, or creates one when it has none. `REX_GUI_AUTO_SESSION=0` keeps startup on the empty state; the UI scripts set it.
 
 ```sh
 pnpm typecheck && pnpm test && pnpm build
@@ -18,14 +20,13 @@ Both desktop scripts run Electron with a throwaway `userData` directory. That me
 | `App.tsx` | Shell layout (base layer, titlebar, sidebar, main, overlays), bridge subscriptions and the global shortcut dispatcher. |
 | `components/Titlebar.tsx` | Window dots (close, minimize, maximize via `window.rex`, with maximize state from `onMaximizeChange`), sidebar toggle, tab strip and the right-hand icons. Each **Tab** supports click to focus, middle-click or × to close, double-click to rename inline, and HTML5 drag to reorder (`moveWindow`). |
 | `components/Workspace.tsx` | Absolutely positions panes from the layout tree. Draggable **dividers** call `resizePane` live (throttled to about 70 ms) and once more on release; double-click sets 50/50. The workspace is keyed by session only, so view revisions never remount terminals. |
-| `components/TerminalPane.tsx` | One xterm per block id, using the WebGL addon with DOM fallback. Fit is debounced by 40 ms plus rAF and only sends a resize when cols×rows actually change. The pane follows the attach, subscribe, size, `startTerminal` order. It applies Rex `theme` meta, including the 256-colour palette through `extendedAnsi`. The **pane header** has a drag handle (drop on another pane to `swapBlocks`), a "process cwd" chip with a hover glass popover (process, full path, terminal title), and split right, split down, zoom and close tools. |
-| `components/Sidebar.tsx` | Collapsible glass panel listing servers (personal, shared, remote) with connection dots and their sessions. Supports new, rename (double-click or pencil), end (with confirmation), Start or Connect for disconnected servers, removing GUI-added hosts, and "Add remote host". |
-| `components/Dialogs.tsx` | Modal glass dialogs: add host, new session, rename session or tab, and end session. |
+| `components/TerminalPane.tsx` | One xterm per block id, using the WebGL addon with DOM fallback. Fit is debounced by 40 ms plus rAF and only sends a resize when cols×rows actually change. The pane follows the attach, subscribe, size, `startTerminal` order. It applies Rex `theme` meta, including the 256-colour palette through `extendedAnsi`. The **pane header** has a drag handle (drop on another pane to `swapBlocks`), a "process cwd" chip with a hover popover (process, full path, terminal title), and split right, split down, zoom and close tools. |
+| `components/Sidebar.tsx` | Collapsible panel listing servers (personal, shared, remote) with connection dots and their sessions. Supports new, rename (double-click or pencil), end (with confirmation), Start or Connect for disconnected servers, removing GUI-added hosts, and "Add remote host". |
+| `components/Dialogs.tsx` | Modal dialogs: add host, new session, rename session or tab, and end session. |
 | `components/CommandPalette.tsx` | Fuzzy palette covering actions, tabs, sessions on every connected server, and "new session on X". Shows shortcut hints and highlights matched characters. |
 | `components/SettingsPopover.tsx` | Appearance popover (eye icon). |
 | `components/EmptyState.tsx` | Three states: connecting, no server (Start local server or Add remote host), and pick a session. |
 | `components/Toasts.tsx` | Error and info toasts (duplicates collapse, max 4). |
-| `components/GlassDefs.tsx` | The SVG `#lens` filter used by `backdrop-filter: url(#lens)`. |
 | `components/Icons.tsx` | Inline 16px stroke icons. |
 | `state/store.ts` | Servers, sessions per server, active selection, the authoritative `SessionView`, derived panes and dividers, per-block identity (process, cwd, home, title), and every action wrapper. |
 | `state/settings.ts` | Persisted appearance settings mirrored to CSS variables. |
@@ -39,12 +40,12 @@ Titles: a tab shows the focused block's `<process> <cwd>`, or the window label o
 
 ## Design tokens (`styles/tokens.css`)
 
-- **Colour:** `--abyss #05080d` (window floor), `--navy #0d1117` (terminal fill), `--slate #161d29` (glass body), `--frost #e7edf4` (text), `--mist #9aa6b6` (secondary), `--haze #5f6b7c` (tertiary, idle icons). Accent is selectable: Glacier `#8fd3ff` (default), Lilac `#b9a7ff`, Mint `#7fe3b5`, Amber `#ffc66d` or Coral `#ff8f8f`. Traffic lights use the standard red, yellow and green.
+- **Colour:** `--abyss #05080d` (window floor), `--navy #0d1117` (terminal fill), `--slate #161d29` (panels), `--frost #e7edf4` (text), `--mist #9aa6b6` (secondary), `--haze #5f6b7c` (tertiary, idle icons). On Omarchy these, plus `--danger`, `--ok` and `--warn`, come from the theme's `colors.toml` (`state/settings.ts`). Hairlines, hover and selected fills are mixes of `--frost`. Accent is selectable: Omarchy theme (default, falls back to `#FFD60A`), Glacier `#8fd3ff`, Lilac `#b9a7ff`, Mint `#7fe3b5`, Amber `#ffc66d` or Coral `#ff8f8f`.
 - **Type:** UI uses `Adwaita Sans` (an Inter derivative, installed), then Inter, Cantarell and system-ui, at 10.5, 11.5, 12.5 and 15 px. The terminal and paths use `JetBrainsMono Nerd Font Mono`, then JetBrains Mono, DejaVu Sans Mono and ui-monospace.
-- **Glass:** a translucent slate tint plus a top-down sheen. The rim is an inset top highlight, a faint left highlight, a 1px inner hairline and a dark bottom edge. Depth comes from two soft shadows. `backdrop-filter: blur(var(--blur)) saturate(1.7)`. Floating panels (`.lens`: palette, dialogs, settings) add the SVG displacement filter so terminal text behind the rim bends slightly. Their body is denser (74%) so their own text stays crisp.
-- **Base layer:** a navy gradient with a faint accent aurora, a violet glow at the bottom right, and an SVG film-grain layer. Its opacity is the "Window opacity" setting, so the window looks finished with or without compositor blur.
+- **Floating surfaces** (`.glass`: palette, dialogs, settings, popovers, toasts): a nearly opaque `--slate` fill, a 1px hairline and one soft shadow, over `backdrop-filter: blur(var(--blur))`.
+- **Base layer:** a flat `--abyss` fill. Its opacity is the "Window opacity" setting, so the window looks finished with or without compositor blur.
 - **Shape:** radii of 5, 7, 10 and 14 px, plus 12 px for the window (none when maximized).
-- **Motion:** `--spring` is a CSS `linear()` spring for popovers, the palette, dialogs, toasts and button presses; `--ease-out` handles tab and sidebar morphs. `prefers-reduced-motion` disables all animation and transitions.
+- **Motion:** short fades and a 4px slide on `--ease-out` for popovers, the palette, dialogs and toasts; no overshoot or press scaling. `prefers-reduced-motion` disables all animation and transitions.
 
 ## Shortcuts
 
@@ -73,8 +74,8 @@ Note that Alt+arrows and Alt+digits are claimed. fish and some editors bind Alt+
 | --- | --- | --- | --- |
 | Window opacity | 35–100% | 88% | Opacity of the base layer behind everything |
 | Terminal tint | 0–100% | 55% | Pane fill in the theme background colour; xterm itself renders transparent |
-| Glass blur | 0–48 px | 22 px | Chrome backdrop blur |
-| Desktop blur | 0–64 px | 32 px | Hyprland only, hidden elsewhere. Compositor blur behind the window while it is focused; 0 = your own Hyprland setting |
+| Glass blur | 0–48 px | 12 px | Chrome backdrop blur |
+| Desktop blur | 0–64 px | 16 px | Hyprland only, hidden elsewhere. Compositor blur behind the window while it is focused; 0 = your own Hyprland setting |
 | Font size | 9–24 | 13.5 | Live refit |
 | Accent | 5 swatches | Glacier | Focus glow, dividers, buttons, selection marks |
 
@@ -113,7 +114,6 @@ The add-host dialog validates input with `parseHostInput` (unit-tested) and expl
 ## Known gaps
 
 - Desktop blur is Hyprland-only. Hyprland has no per-window blur size, so while Rex GUI is focused `src/main/hypr-blur.ts` raises the global `decoration:blur:size` (and `passes` to at least 4) over the IPC socket. It restores your values on unfocus, quit, SIGINT and SIGTERM. Other transparent windows and layers get the heavier blur while Rex GUI is focused. After a crash or SIGKILL, the next rex-gui focus/unfocus restores the right values from `$XDG_RUNTIME_DIR/hypr/<instance>/rex-gui-blur.json`, or run `hyprctl reload`. That record also stops a second instance from saving the first instance's raised value as the baseline. The baseline is re-read on every focus, so config edits made while Rex GUI is unfocused are kept. On KDE, use the KWin blur effect with "blur behind" rules. The base layer keeps the app legible either way.
-- The `#lens` displacement depends on Chromium's support for `backdrop-filter: url()`. It is subtle on purpose. Where it is unsupported, the plain blur still applies.
 - Hidden tabs detach their terminals (backend design), so switching tabs re-attaches and redraws from `format`. xterm instances survive layout and focus changes within a tab, but not tab switches.
 - Split-pane drag is pointer-based. Pane swap and tab reorder use HTML5 drag and drop, which has no keyboard equivalent yet; the palette covers the other actions.
 - Window rename with an empty label is ignored, because Rex has no documented "reset to default".

@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Linux desktop client for Rex",
   "main": "out/main/index.js",
+  "desktopName": "rex-gui.desktop",
   "author": "rex-gui contributors",
   "license": "MIT",
   "scripts": {

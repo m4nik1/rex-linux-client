@@ -1,5 +1,5 @@
 import { createSignal, Match, onMount, Show, Switch, type JSX } from 'solid-js'
-import { parseHostInput } from '../lib/format'
+import { newSessionLabel, parseHostInput } from '../lib/format'
 import { actions, servers } from '../state/store'
 import { errorText } from '../state/toasts'
 import { dialog, setDialog, type DialogState } from '../state/ui'
@@ -20,7 +20,7 @@ function Frame(props: {
     <div class="scrim" onMouseDown={(e) => e.target === e.currentTarget && setDialog(null)}>
       <form
         ref={form}
-        class="dialog glass lens"
+        class="dialog glass"
         role="dialog"
         aria-modal="true"
         aria-label={props.title}
@@ -153,7 +153,7 @@ export function Dialogs() {
             {(x) => (
               <LabelDialog
                 title={`New session on ${servers().find((s) => s.id === x().serverId)?.label ?? 'server'}`}
-                initial={`session-${new Date().toTimeString().slice(0, 5).replace(':', '')}`}
+                initial={newSessionLabel()}
                 submit="Create session"
                 onSubmit={(label) => actions.createSession(x().serverId, label)}
               />

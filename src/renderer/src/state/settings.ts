@@ -2,8 +2,16 @@ import { createStore, reconcile } from 'solid-js/store'
 import { createEffect, createSignal } from 'solid-js'
 import { COLOR_KEYS, hex, type ColorKey } from '../lib/theme'
 import { THEMES, REX_THEME_ID } from '../lib/themes'
+import type { OmarchyTheme } from '../../../shared/ipc'
+
+/** The active Omarchy theme, or null off Omarchy. Kept live by bindSettings. */
+export const [omarchy, setOmarchy] = createSignal<OmarchyTheme | null>(null)
+
+/** Omarchy's own fallback accent, used when its theme can't be read. */
+const OMARCHY_FALLBACK = '#FFD60A'
 
 export const ACCENTS = {
+  omarchy: { label: 'Omarchy theme', color: OMARCHY_FALLBACK },
   glacier: { label: 'Glacier', color: '#8fd3ff' },
   lilac: { label: 'Lilac', color: '#b9a7ff' },
   mint: { label: 'Mint', color: '#7fe3b5' },
@@ -36,14 +44,14 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   backgroundOpacity: 0.25,
   terminalOpacity: 0.3,
-  blur: 22,
-  desktopBlur: 32,
+  blur: 12,
+  desktopBlur: 16,
   fontSize: 13.5,
   fontFamily: '',
   lineHeight: 1.12,
   colorScheme: REX_THEME_ID,
   colorOverrides: {},
-  accent: 'glacier',
+  accent: 'omarchy',
   sidebarOpen: false,
 }
 
@@ -133,14 +141,45 @@ export function resetSettings() {
 /** Whether the compositor accepted desktop blur control (Hyprland only). */
 export const [desktopBlurSupported, setDesktopBlurSupported] = createSignal(false)
 
+/** UI tokens and the colors.toml keys that fill them, first match wins. */
+const OMARCHY_TOKENS: [string, string[]][] = [
+  ['--abyss', ['darker_background', 'dark_background', 'background']],
+  ['--navy', ['background']],
+  ['--slate', ['lighter_background', 'background']],
+  ['--frost', ['foreground']],
+  ['--mist', ['dark_foreground', 'muted']],
+  ['--haze', ['muted']],
+  ['--danger', ['red']],
+  ['--ok', ['green']],
+  ['--warn', ['yellow']],
+]
+
+export const accentColor = (id: AccentId) =>
+  id === 'omarchy' ? (omarchy()?.colors.accent ?? OMARCHY_FALLBACK) : ACCENTS[id].color
+
 /** Mirror settings to CSS custom properties, the compositor and localStorage. */
 export function bindSettings() {
+  void window.rex.getOmarchyTheme().then(setOmarchy, (e) => console.warn('[omarchy theme]', e))
+  window.rex.onOmarchyTheme(setOmarchy)
+  createEffect(() => {
+    const theme = omarchy()
+    const root = document.documentElement.style
+    // Match Hyprland's window rounding, which is 0 on Omarchy's default.
+    if (theme?.rounding === undefined) root.removeProperty('--r-win')
+    else root.setProperty('--r-win', `${theme.rounding}px`)
+    // Take the UI palette from the theme; tokens.css holds the fallback.
+    for (const [token, keys] of OMARCHY_TOKENS) {
+      const color = keys.map((k) => theme?.colors[k]).find((c) => c && hex(c))
+      if (color) root.setProperty(token, hex(color)!)
+      else root.removeProperty(token)
+    }
+  })
   createEffect(() => {
     const root = document.documentElement.style
     root.setProperty('--base-alpha', String(settings.backgroundOpacity))
     root.setProperty('--term-alpha', String(settings.terminalOpacity))
     root.setProperty('--blur', `${settings.blur}px`)
-    root.setProperty('--accent', ACCENTS[settings.accent].color)
+    root.setProperty('--accent', accentColor(settings.accent))
     localStorage.setItem(KEY, JSON.stringify({ ...settings }))
   })
   createEffect(() => {

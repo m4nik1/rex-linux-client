@@ -78,6 +78,11 @@ export interface ServerEvent {
   payload: Record<string, unknown>
 }
 export type Unsubscribe = () => void
+/** The active Omarchy theme: colors.toml as-is, plus Hyprland's window rounding. */
+export interface OmarchyTheme {
+  colors: Record<string, string>
+  rounding?: number
+}
 /** A process as reported by com.superlogical.terminal.process (subset). */
 export interface ProcessInfo {
   pid: number
@@ -240,6 +245,9 @@ export interface RexAPI {
   /** Open a Tailscale login URL in the default browser. */
   openLoginUrl(url: string): Promise<void>
   detectAgents(): Promise<AgentInfo[]>
+  /** The active Omarchy theme, or null when Omarchy isn't installed. */
+  getOmarchyTheme(): Promise<OmarchyTheme | null>
+  onOmarchyTheme(cb: (theme: OmarchyTheme | null) => void): Unsubscribe
 }
 export const IPC_METHODS = [
   'listServers',
@@ -280,6 +288,7 @@ export const IPC_METHODS = [
   'tailscaleSet',
   'openLoginUrl',
   'detectAgents',
+  'getOmarchyTheme',
 ] as const
 export type IPCMethod = (typeof IPC_METHODS)[number]
 declare global {

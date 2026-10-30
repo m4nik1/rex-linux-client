@@ -1,0 +1,31 @@
+# Packages the working tree; bin/install builds the JavaScript first.
+pkgname=rex-gui
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Linux desktop client for Rex'
+arch=('any')
+license=('MIT')
+depends=('electron39')
+optdepends=('hyprland: focused-window desktop blur')
+
+_root="$(realpath "$startdir/..")"
+
+package() {
+  cd "$_root"
+  [[ -f out/main/index.js ]] || { echo 'out/ is missing: run bin/install' >&2; return 1; }
+  local lib="$pkgdir/usr/lib/$pkgname"
+  install -dm755 "$lib/node_modules"
+  cp -r out "$lib/"
+  install -Dm644 package.json "$lib/package.json"
+  # The main process loads ws at runtime; everything else is bundled.
+  cp -rL node_modules/ws "$lib/node_modules/ws"
+
+  install -Dm755 /dev/stdin "$pkgdir/usr/bin/$pkgname" <<'SH'
+#!/bin/sh
+# Launched from a terminal app, ELECTRON_RUN_AS_NODE would turn Electron into plain Node.
+unset ELECTRON_RUN_AS_NODE
+exec electron39 /usr/lib/rex-gui "$@"
+SH
+  install -Dm644 pkgbuild/$pkgname.desktop "$pkgdir/usr/share/applications/$pkgname.desktop"
+  install -Dm644 pkgbuild/$pkgname.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/$pkgname.svg"
+}

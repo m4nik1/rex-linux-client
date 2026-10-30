@@ -1,0 +1,7 @@
+#!/bin/sh
+# Build the app and install it as a package, so it shows up in the app launcher.
+set -e
+cd "$(dirname "$0")/.."
+npx electron-vite build
+cd pkgbuild
+makepkg -fsi "$@"

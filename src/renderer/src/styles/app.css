@@ -45,38 +45,28 @@ kbd {
   border-radius: var(--r-win);
   overflow: hidden;
   isolation: isolate;
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.09);
+  box-shadow: inset 0 0 0 1px var(--line);
 }
 :root.maximized .app {
   border-radius: 0;
   box-shadow: none;
 }
-/* Base layer: deep navy with a faint accent aurora and film grain. Its opacity is
-   the "Window opacity" setting, so it reads well with or without compositor blur. */
+/* Base layer: a flat fill whose opacity is the "Window opacity" setting, so it
+   reads well with or without compositor blur. */
 .base {
   position: absolute;
   inset: 0;
   z-index: -1;
   opacity: var(--base-alpha);
-  background:
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .05 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
-    radial-gradient(120% 70% at 0% 0%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 60%),
-    radial-gradient(90% 80% at 100% 110%, rgb(70 60 140 / 0.12), transparent 60%),
-    linear-gradient(180deg, #0c121b, var(--abyss));
+  background: var(--abyss);
 }
 
-/* ---------- glass primitive ---------- */
+/* ---------- floating surfaces ---------- */
+/* Panels sit over live terminal text, so the fill stays nearly opaque. */
 .glass {
-  background: var(--glass-sheen), var(--glass-tint);
+  background: var(--panel);
   backdrop-filter: var(--glass-filter);
-  box-shadow: var(--glass-rim), var(--depth-2);
-}
-/* Floating glass that bends what is behind it (SVG displacement, Chromium). */
-.lens {
-  /* Floating panels sit over live terminal text: a denser body keeps their own
-     text crisp while the rim still bends what is behind. */
-  background: var(--glass-sheen), rgb(15 20 30 / 0.74);
-  backdrop-filter: url(#lens) var(--glass-filter);
+  box-shadow: inset 0 0 0 1px var(--line), var(--shadow);
 }
 
 /* ---------- titlebar ---------- */
@@ -95,49 +85,19 @@ kbd {
   position: absolute;
   inset: auto 0 0 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.07) 12%, rgb(255 255 255 / 0.07) 88%, transparent);
+  background: var(--line);
 }
 .titlebar button,
 .titlebar input,
 .tab {
   -webkit-app-region: no-drag;
 }
-.lights {
+.wctl {
   display: flex;
-  gap: 8px;
-  margin-right: 10px;
-}
-.lights .light {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  box-shadow:
-    inset 0 0 0 0.5px rgb(0 0 0 / 0.35),
-    inset 0 1px 1px rgb(255 255 255 / 0.35);
-}
-.lights .light.close {
-  background: #ff5f57;
-}
-.lights .light.min {
-  background: #febc2e;
-}
-.lights .light.max {
-  background: #28c840;
-}
-.lights .light svg {
-  width: 8px;
-  height: 8px;
-  fill: none;
-  stroke: rgb(0 0 0 / 0.6);
-  stroke-width: 1.4;
-  stroke-linecap: round;
-  opacity: 0;
-  transition: opacity var(--t-fast);
-}
-.lights:hover .light svg {
-  opacity: 1;
+  gap: 2px;
+  margin-left: 6px;
+  padding-left: 8px;
+  border-left: 1px solid var(--line);
 }
 
 .ibtn {
@@ -149,22 +109,18 @@ kbd {
   color: var(--mist);
   transition:
     color var(--t-fast),
-    background var(--t-fast),
-    transform var(--t-mid) var(--spring);
+    background var(--t-fast);
 }
 .ibtn:hover {
   color: var(--frost);
-  background: rgb(255 255 255 / 0.08);
-}
-.ibtn:active {
-  transform: scale(0.92);
+  background: var(--hover);
 }
 .ibtn.on {
   color: var(--accent);
 }
 .ibtn.danger:hover {
-  color: #ffd2d2;
-  background: rgb(255 107 107 / 0.18);
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 16%, transparent);
 }
 .ibtn:disabled {
   opacity: 0.35;
@@ -206,13 +162,11 @@ kbd {
   align-items: center;
   gap: 7px;
   padding: 0 6px 0 9px;
-  border-radius: 9px;
+  border-radius: var(--r-sm);
   color: var(--mist);
   transition:
-    background var(--t-mid) var(--ease-out),
-    color var(--t-fast),
-    box-shadow var(--t-mid) var(--ease-out),
-    transform var(--t-spring) var(--spring);
+    background var(--t-fast),
+    color var(--t-fast);
 }
 /* Hairline separators between resting tabs, hidden next to hover/active pills. */
 .tab:not(:first-child)::before {
@@ -222,7 +176,7 @@ kbd {
   top: 8px;
   bottom: 8px;
   width: 1px;
-  background: rgb(255 255 255 / 0.09);
+  background: var(--line);
   transition: opacity var(--t-fast);
 }
 .tab:hover::before,
@@ -232,25 +186,12 @@ kbd {
   opacity: 0;
 }
 .tab:hover {
-  background: rgb(255 255 255 / 0.045);
+  background: var(--hover);
   color: var(--frost);
 }
 .tab.active {
   color: var(--frost);
-  background:
-    radial-gradient(120% 140% at 30% -40%, rgb(255 255 255 / 0.16), transparent 55%),
-    linear-gradient(180deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.04)),
-    rgb(30 38 52 / 0.62);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.2),
-    inset 0 0 0 1px rgb(255 255 255 / 0.07),
-    inset 0 -1px 0 rgb(0 0 0 / 0.25),
-    0 1px 1px rgb(0 0 0 / 0.3),
-    0 6px 16px -6px rgb(0 0 0 / 0.6);
-  backdrop-filter: blur(12px) saturate(1.6);
-}
-.tab:active {
-  transform: scale(0.98);
+  background: var(--selected);
 }
 .tab.drop-before {
   box-shadow: inset 2px 0 0 var(--accent);
@@ -264,7 +205,6 @@ kbd {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  mask-image: linear-gradient(90deg, #000 85%, transparent);
 }
 .tab-proc {
   font-weight: 600;
@@ -284,8 +224,8 @@ kbd {
   padding: 0 6px;
   border: 0;
   border-radius: var(--r-xs);
-  background: rgb(0 0 0 / 0.35);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);
+  background: var(--abyss);
+  box-shadow: inset 0 0 0 1px var(--accent);
   outline: none;
   user-select: text;
 }
@@ -306,46 +246,44 @@ kbd {
 }
 .tab-close:hover {
   opacity: 1;
-  background: rgb(255 255 255 / 0.12);
+  background: var(--selected);
 }
 
-/* process tiles: tiny app-icon squares like Rex.app */
+/* process tiles: a glyph on a flat tint */
 .ptile {
   flex: none;
   width: 18px;
   height: 18px;
   display: grid;
   place-items: center;
-  border-radius: 5px;
+  border-radius: var(--r-xs);
   font: 12px/1 var(--glyph);
-  color: #e9f0f7;
-  background: linear-gradient(180deg, #3a4456, #262d3a);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.22),
-    inset 0 0 0 0.5px rgb(255 255 255 / 0.12),
-    0 1px 2px rgb(0 0 0 / 0.4);
+  color: var(--frost);
+  background: var(--selected);
 }
 .ptile.small {
   width: 16px;
   height: 16px;
   font-size: 10.5px;
-  border-radius: 4.5px;
+}
+.ptile[data-tint]:not([data-tint='neutral']) {
+  color: var(--tint);
+  background: color-mix(in srgb, var(--tint) 18%, transparent);
 }
 .ptile[data-tint='green'] {
-  background: linear-gradient(180deg, #5fbf6d, #2f8a46);
+  --tint: var(--ok);
 }
 .ptile[data-tint='blue'] {
-  background: linear-gradient(180deg, #5d9bea, #2e63b8);
+  --tint: #6cb6ff;
 }
 .ptile[data-tint='amber'] {
-  background: linear-gradient(180deg, #f0b452, #c27a1c);
-  color: #2b1a05;
+  --tint: var(--warn);
 }
 .ptile[data-tint='rose'] {
-  background: linear-gradient(180deg, #f07a6a, #c0443a);
+  --tint: var(--danger);
 }
 .ptile[data-tint='violet'] {
-  background: linear-gradient(180deg, #9a86f0, #5e4bc0);
+  --tint: #b9a7ff;
 }
 
 /* ---------- body ---------- */
@@ -374,7 +312,7 @@ kbd {
     width var(--t-mid) var(--ease-out),
     margin var(--t-mid) var(--ease-out),
     opacity var(--t-fast);
-  box-shadow: var(--glass-rim), var(--depth-1);
+  box-shadow: inset 0 0 0 1px var(--line);
 }
 .sidebar.open {
   width: 244px;
@@ -415,11 +353,9 @@ kbd {
   height: 7px;
   border-radius: 50%;
   background: var(--haze);
-  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.25);
 }
 .dot[data-state='connected'] {
   background: var(--ok);
-  box-shadow: 0 0 6px color-mix(in srgb, var(--ok) 70%, transparent);
 }
 .dot[data-state='connecting'],
 .dot[data-state='reconnecting'] {
@@ -510,20 +446,16 @@ kbd {
   white-space: nowrap;
 }
 .sess:hover {
-  background: rgb(255 255 255 / 0.05);
+  background: var(--hover);
   color: var(--frost);
 }
 .sess.active {
   color: var(--frost);
-  background: linear-gradient(180deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.04));
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.12),
-    inset 0 0 0 1px rgb(255 255 255 / 0.05);
+  background: var(--selected);
 }
 .sess.active::before {
   background: var(--accent);
   opacity: 1;
-  box-shadow: 0 0 6px var(--accent);
 }
 .sess-tools {
   position: absolute;
@@ -552,11 +484,11 @@ kbd {
   color: var(--mist);
   font-size: var(--fs-sm);
   font-weight: 600;
-  border-top: 1px solid rgb(255 255 255 / 0.06);
+  border-top: 1px solid var(--line);
 }
 .sidebar-add:hover {
   color: var(--frost);
-  background: rgb(255 255 255 / 0.04);
+  background: var(--hover);
 }
 
 /* ---------- workspace & panes ---------- */
@@ -568,14 +500,12 @@ kbd {
   position: absolute;
   display: flex;
   flex-direction: column;
-  background: var(--pane-bg, rgb(13 17 23 / var(--term-alpha)));
-  transition: box-shadow var(--t-mid) var(--ease-out);
+  background: var(--pane-bg, color-mix(in srgb, var(--navy) calc(var(--term-alpha) * 100%), transparent));
+  transition: box-shadow var(--t-fast);
 }
 .pane.focused {
   z-index: 1;
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--accent) 38%, transparent),
-    inset 0 0 22px -6px color-mix(in srgb, var(--accent) 22%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);
 }
 .pane.drop::after {
   content: '';
@@ -583,7 +513,7 @@ kbd {
   inset: 6px;
   border-radius: var(--r-md);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
-  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 70%, transparent);
+  box-shadow: inset 0 0 0 1px var(--accent);
   pointer-events: none;
 }
 .pane-head {
@@ -607,8 +537,7 @@ kbd {
   transition: background var(--t-fast);
 }
 .pane-chip:hover {
-  background: rgb(255 255 255 / 0.07);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
+  background: var(--hover);
 }
 .pane-chip[draggable='true'] {
   cursor: grab;
@@ -639,15 +568,10 @@ kbd {
   border-radius: var(--r-md);
   pointer-events: none;
   opacity: 0;
-  transform: translateY(-4px) scale(0.96);
-  transform-origin: 16px 0;
-  transition:
-    opacity var(--t-fast),
-    transform var(--t-spring) var(--spring);
+  transition: opacity var(--t-fast);
 }
 .pane-chip:hover .pane-pop {
   opacity: 1;
-  transform: none;
   transition-delay: 280ms;
 }
 .pop-row {
@@ -666,7 +590,7 @@ kbd {
 .pop-title {
   margin-top: 7px;
   padding-top: 7px;
-  border-top: 1px solid rgb(255 255 255 / 0.07);
+  border-top: 1px solid var(--line);
   color: var(--mist);
   font-size: var(--fs-sm);
 }
@@ -715,10 +639,10 @@ kbd {
 }
 .xterm .xterm-viewport {
   scrollbar-width: thin;
-  scrollbar-color: rgb(255 255 255 / 0.16) transparent;
+  scrollbar-color: var(--line-strong) transparent;
 }
 
-/* dividers: 1px hairline, generous hit area, accent while dragging */
+/* dividers: 1px hairline, generous hit area, accent on hover and drag */
 .divider {
   position: absolute;
   z-index: 5;
@@ -736,25 +660,15 @@ kbd {
   content: '';
   position: absolute;
   inset: 0 4px;
-  background: rgb(255 255 255 / 0.08);
-  transition:
-    background var(--t-fast),
-    inset var(--t-mid) var(--spring),
-    box-shadow var(--t-fast);
-  border-radius: 2px;
+  background: var(--line);
+  transition: background var(--t-fast);
 }
 .divider.v::before {
   inset: 4px 0;
 }
 .divider:hover::before,
 .divider.dragging::before {
-  inset: 0 3px;
-  background: color-mix(in srgb, var(--accent) 75%, white 0%);
-  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 60%, transparent);
-}
-.divider.v:hover::before,
-.divider.v.dragging::before {
-  inset: 3px 0;
+  background: var(--accent);
 }
 
 /* ---------- empty / disconnected ---------- */
@@ -764,7 +678,7 @@ kbd {
   display: grid;
   place-items: center;
   padding: 24px;
-  background: rgb(13 17 23 / calc(var(--term-alpha) * 0.6));
+  background: color-mix(in srgb, var(--navy) calc(var(--term-alpha) * 60%), transparent);
 }
 .empty-card {
   width: min(440px, 100%);
@@ -775,13 +689,10 @@ kbd {
   height: 48px;
   display: grid;
   place-items: center;
-  border-radius: 13px;
+  border-radius: var(--r-md);
   color: var(--accent);
   margin-bottom: 18px;
-  background:
-    radial-gradient(100% 100% at 30% 0%, rgb(255 255 255 / 0.18), transparent 60%),
-    rgb(30 38 52 / 0.7);
-  box-shadow: var(--glass-rim), var(--depth-1);
+  background: var(--selected);
 }
 .empty h1 {
   font-size: 20px;
@@ -798,13 +709,13 @@ kbd {
 }
 .empty code {
   color: var(--frost);
-  background: rgb(255 255 255 / 0.07);
+  background: var(--selected);
   padding: 1px 5px;
   border-radius: 4px;
 }
 .empty-err {
   font: 450 var(--fs-sm) / 1.4 var(--mono) !important;
-  color: #ffb4b4 !important;
+  color: var(--danger) !important;
   user-select: text;
 }
 .empty-list {
@@ -832,8 +743,7 @@ kbd {
   font-weight: 500;
 }
 .empty-sess:hover {
-  background: rgb(255 255 255 / 0.06);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
+  background: var(--hover);
 }
 .empty-actions {
   display: flex;
@@ -847,25 +757,14 @@ kbd {
   gap: 6px;
   height: 30px;
   padding: 0 14px;
-  border-radius: 9px;
-  font-weight: 650;
-  color: #071019;
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / 0.35), rgb(255 255 255 / 0) 60%),
-    var(--accent);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.5),
-    inset 0 -1px 0 rgb(0 0 0 / 0.18),
-    0 4px 14px -4px color-mix(in srgb, var(--accent) 60%, transparent);
-  transition:
-    transform var(--t-mid) var(--spring),
-    filter var(--t-fast);
+  border-radius: var(--r-sm);
+  font-weight: 600;
+  color: var(--abyss);
+  background: var(--accent);
+  transition: filter var(--t-fast);
 }
 .btn:hover {
-  filter: brightness(1.08);
-}
-.btn:active {
-  transform: scale(0.96);
+  filter: brightness(1.1);
 }
 .btn:disabled {
   opacity: 0.45;
@@ -873,19 +772,11 @@ kbd {
 }
 .btn.ghost {
   color: var(--frost);
-  background: rgb(255 255 255 / 0.07);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.1),
-    inset 0 0 0 1px rgb(255 255 255 / 0.06);
+  background: var(--selected);
 }
 .btn.danger {
-  color: #fff;
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / 0.22), rgb(255 255 255 / 0) 60%),
-    #d9534f;
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.35),
-    0 4px 14px -4px rgb(217 83 79 / 0.6);
+  color: var(--abyss);
+  background: var(--danger);
 }
 .field {
   display: flex;
@@ -903,20 +794,15 @@ kbd {
   padding: 0 10px;
   border: 0;
   border-radius: var(--r-sm);
-  background: rgb(0 0 0 / 0.3);
-  box-shadow:
-    inset 0 1px 2px rgb(0 0 0 / 0.35),
-    inset 0 0 0 1px rgb(255 255 255 / 0.08);
+  background: var(--abyss);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
   outline: none;
   font-weight: 500;
   user-select: text;
   transition: box-shadow var(--t-fast);
 }
 .field input:focus {
-  box-shadow:
-    inset 0 1px 2px rgb(0 0 0 / 0.35),
-    inset 0 0 0 1px color-mix(in srgb, var(--accent) 70%, transparent),
-    0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 .field input::placeholder {
   color: var(--haze);
@@ -929,13 +815,13 @@ kbd {
   z-index: 50;
   display: grid;
   place-items: center;
-  background: rgb(3 6 10 / 0.38);
-  animation: fade var(--t-mid) var(--ease-out);
+  background: rgb(0 0 0 / 0.4);
+  animation: fade var(--t-fast) var(--ease-out);
 }
 .scrim.top {
   place-items: start center;
   padding-top: 70px;
-  background: rgb(3 6 10 / 0.18);
+  background: rgb(0 0 0 / 0.2);
 }
 @keyframes fade {
   from {
@@ -945,14 +831,14 @@ kbd {
 @keyframes pop {
   from {
     opacity: 0;
-    transform: translateY(-6px) scale(0.965);
+    transform: translateY(-4px);
   }
 }
 .dialog {
   width: min(420px, calc(100vw - 32px));
   padding: 18px 18px 16px;
   border-radius: var(--r-lg);
-  animation: pop var(--t-spring) var(--spring);
+  animation: pop var(--t-mid) var(--ease-out);
 }
 .dialog h2 {
   margin: 0 0 14px;
@@ -979,7 +865,7 @@ kbd {
 }
 .hint .bad,
 .form-error {
-  color: #ffb4b4;
+  color: var(--danger);
 }
 .form-error {
   margin: 0 0 10px;
@@ -997,7 +883,7 @@ kbd {
   width: min(620px, calc(100vw - 40px));
   border-radius: var(--r-lg);
   overflow: hidden;
-  animation: pop var(--t-spring) var(--spring);
+  animation: pop var(--t-mid) var(--ease-out);
 }
 .palette-input {
   display: flex;
@@ -1006,7 +892,7 @@ kbd {
   height: 48px;
   padding: 0 16px;
   color: var(--mist);
-  border-bottom: 1px solid rgb(255 255 255 / 0.07);
+  border-bottom: 1px solid var(--line);
 }
 .palette-input input {
   flex: 1;
@@ -1043,10 +929,7 @@ kbd {
 }
 .palette-item.sel {
   color: var(--frost);
-  background: linear-gradient(180deg, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0.05));
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.1),
-    inset 0 0 0 1px rgb(255 255 255 / 0.05);
+  background: var(--selected);
 }
 .pi-title {
   flex: 1;
@@ -1074,13 +957,10 @@ kbd {
   padding: 0 5px;
   display: inline-grid;
   place-items: center;
-  border-radius: 5px;
+  border-radius: var(--r-xs);
   font: 600 10px/1 var(--ui);
   color: var(--mist);
-  background: rgb(255 255 255 / 0.06);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.08),
-    inset 0 -1px 0 rgb(0 0 0 / 0.3);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
 }
 .palette-empty {
   padding: 18px;
@@ -1096,7 +976,7 @@ kbd {
   height: min(520px, calc(100vh - 48px));
   border-radius: var(--r-lg);
   overflow: hidden;
-  animation: pop var(--t-spring) var(--spring);
+  animation: pop var(--t-mid) var(--ease-out);
 }
 .settings-dialog:focus {
   outline: none;
@@ -1399,27 +1279,18 @@ kbd {
   background: none;
 }
 .slider input::-webkit-slider-runnable-track {
-  height: 5px;
-  border-radius: 3px;
-  background:
-    linear-gradient(90deg, var(--accent) var(--fill), rgb(255 255 255 / 0.1) var(--fill));
-  box-shadow: inset 0 1px 1px rgb(0 0 0 / 0.35);
+  height: 4px;
+  border-radius: 2px;
+  /* Hard stop, not a fade: the filled part of the track. */
+  background: linear-gradient(90deg, var(--accent) var(--fill), var(--line-strong) var(--fill));
 }
 .slider input::-webkit-slider-thumb {
   appearance: none;
-  width: 18px;
-  height: 18px;
-  margin-top: -6.5px;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
   border-radius: 50%;
-  background:
-    radial-gradient(80% 80% at 35% 25%, #fff, #dde6f0 60%, #b9c5d3);
-  box-shadow:
-    0 0 0 0.5px rgb(0 0 0 / 0.4),
-    0 2px 6px rgb(0 0 0 / 0.45);
-  transition: transform var(--t-mid) var(--spring);
-}
-.slider input:active::-webkit-slider-thumb {
-  transform: scale(1.15);
+  background: var(--frost);
 }
 .accent-row {
   display: flex;
@@ -1435,20 +1306,13 @@ kbd {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background:
-    radial-gradient(80% 80% at 35% 25%, rgb(255 255 255 / 0.55), transparent 55%),
-    var(--c);
-  box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.35);
-  transition: transform var(--t-mid) var(--spring), box-shadow var(--t-fast);
-}
-.swatch:hover {
-  transform: scale(1.12);
+  background: var(--c);
+  transition: box-shadow var(--t-fast);
 }
 .swatch.on {
   box-shadow:
-    inset 0 0 0 0.5px rgb(0 0 0 / 0.35),
-    0 0 0 2px rgb(13 17 23 / 0.9),
-    0 0 0 3.5px var(--c);
+    0 0 0 2px var(--slate),
+    0 0 0 3px var(--c);
 }
 
 .toasts {
@@ -1472,7 +1336,7 @@ kbd {
   padding: 6px 6px 6px 12px;
   border-radius: var(--r-md);
   font-weight: 500;
-  animation: pop var(--t-spring) var(--spring);
+  animation: pop var(--t-mid) var(--ease-out);
 }
 .toast-mark {
   flex: none;
@@ -1483,13 +1347,9 @@ kbd {
 }
 .toast.error .toast-mark {
   background: var(--danger);
-  box-shadow: 0 0 8px var(--danger);
 }
 .toast.error {
-  box-shadow:
-    var(--glass-rim),
-    inset 0 0 0 1px rgb(255 107 107 / 0.22),
-    var(--depth-2);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 40%, transparent), var(--shadow);
 }
 .toast-text {
   flex: 1;
