@@ -14,6 +14,7 @@
     "test": "vitest run",
     "smoke": "tsx scripts/smoke.ts",
     "dist": "pnpm build && electron-builder",
+    "appimage": "pnpm build && electron-builder --linux AppImage",
     "smoke:ui": "pnpm build && env -u ELECTRON_RUN_AS_NODE electron scripts/ui-smoke.cjs",
     "setup:electron": "node scripts/setup-electron.cjs",
     "format": "prettier --write src scripts tests electron.vite.config.ts package.json tsconfig.json",
